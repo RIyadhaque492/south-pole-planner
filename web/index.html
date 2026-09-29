@@ -595,7 +595,7 @@ function renderKpis() {
 
 /* ---------- canvas helper ---------- */
 function setup(cv) {
-  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1, h = +cv.getAttribute("height");
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1, h = +(cv.dataset.h ||= cv.getAttribute("height"));
   cv.style.height = h + "px"; cv.width = Math.round(r.width * dpr); cv.height = Math.round(h * dpr);
   const c = cv.getContext("2d"); c.setTransform(dpr, 0, 0, dpr, 0, 0);
   return { c, w: r.width, h };

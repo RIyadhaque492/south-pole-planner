@@ -87,7 +87,7 @@ h2 { font: 600 1.3rem/1.2 var(--display); letter-spacing: .04em; text-transform:
 @media (max-width: 960px) { .game { grid-template-columns: minmax(0, 1fr); } }
 .scene { padding: 0; overflow: hidden; }
 .scene canvas { display: block; width: 100%; }
-canvas { touch-action: manipulation; }
+canvas { display: block; width: 100%; max-width: 100%; touch-action: manipulation; }
 .hud { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border-top: 1px solid var(--line); }
 @media (max-width: 640px) { .hud { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .hud > div { background: var(--panel); padding: 10px 14px; min-width: 0; }
@@ -504,7 +504,7 @@ const pad = x => String(x).padStart(2, "0");
 const fmt = ms => { const d = new Date(ms); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:00 UTC`; };
 const fmtD = ms => { const d = new Date(ms); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`; };
 function setup(cv) {
-  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1, h = +cv.getAttribute("height");
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1, h = +(cv.dataset.h ||= cv.getAttribute("height"));
   cv.style.height = h + "px"; cv.width = Math.round(r.width * dpr); cv.height = Math.round(h * dpr);
   const c = cv.getContext("2d"); c.setTransform(dpr, 0, 0, dpr, 0, 0); return { c, w: r.width, h };
 }
