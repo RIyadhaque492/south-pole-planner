@@ -10,6 +10,18 @@ near the Moon's south pole and a date range, and see at a glance:
 
 It opens in any browser as a single file (`web/index.html`). No server, no install.
 
+It comes with **Race the Shadow** (`web/game.html`), a survival game for students and the public that runs on the same
+real sky data: keep a lander alive through the lunar night and send science home while Earth is up. See `GAME_DESIGN.md`.
+
+## Put it online (GitHub Pages)
+
+Copy both pages to the top of the repo, commit and push, then turn on **Settings → Pages → main / (root)**:
+
+```bash
+cp web/index.html index.html
+cp web/game.html game.html
+```
+
 ## Why it's accurate
 
 - Sun and Earth positions come from **JPL DE421**, including its integrated **lunar librations**,
@@ -68,8 +80,11 @@ ephemeris/validate.py         checks against the IAU model and physical ranges
 ephemeris/geometry.json       prebuilt table (2026-2032)
 terrain/horizon_mask.py       LOLA DEM -> terrain horizon CSV for any site
 web/app.template.html         the app (HTML/CSS/JS, no framework)
-web/build.py                  bundles geometry.json into web/index.html
-web/index.html                the finished single-file app
+web/game.template.html        Race the Shadow game (HTML/CSS/JS)
+web/build.py                  bundles geometry.json into web/index.html and web/game.html
+web/index.html                the finished Planner
+web/game.html                 the finished game
+GAME_DESIGN.md                game rules, numbers, scenarios and balance results
 ```
 
 ## Definitions used

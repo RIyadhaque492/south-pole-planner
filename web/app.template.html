@@ -46,6 +46,8 @@ h1 span { color: var(--sun); }
 .lang { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--panel); }
 .lang button { border: 0; background: none; border-radius: 999px; padding: 5px 14px; font-weight: 600; }
 .lang button[aria-pressed=true] { background: var(--ink); color: var(--panel); }
+.gamelink { font-weight: 600; color: var(--sun); text-decoration: none; border: 1px solid var(--sun); border-radius: 999px; padding: 6px 14px; }
+.gamelink:hover { background: var(--sun); color: var(--panel); }
 .intro { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px 28px; align-items: center;
   border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding-block: 14px; margin-bottom: 18px; }
 @media (max-width: 900px) { .intro { grid-template-columns: minmax(0, 1fr); } }
@@ -170,9 +172,12 @@ footer { margin-top: 18px; font: 12px/1.5 var(--mono); color: var(--muted); }
 <div class="wrap">
   <header>
     <h1 data-i18n-html="title">South Pole <span>Window</span> Planner</h1>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <a class="gamelink" href="game.html" data-i18n="playGame">Play the game: Race the Shadow</a>
     <div class="lang" role="group" aria-label="Language">
       <button type="button" data-lang="en" aria-pressed="true">English</button>
       <button type="button" data-lang="bn" aria-pressed="false">বাংলা</button>
+    </div>
     </div>
   </header>
 
@@ -308,7 +313,7 @@ const GEOMETRY = __GEOMETRY__;
 /* ---------- words ---------- */
 const TXT = {
 en: {
-  title: 'South Pole <span>Window</span> Planner',
+  title: 'South Pole <span>Window</span> Planner', playGame: "Play the game: Race the Shadow",
   question: 'Where and when can a Moon lander near the south pole get <b>sunlight for power</b> and <em>see Earth to talk home</em>?',
   step1: "Pick a landing site on the left", step2: "Choose the dates", step3: "Read the answer and press Play",
   pickSite: "Choose a landing site", pickDates: "Choose the dates", startDate: "Start date", howLong: "How long",
@@ -367,7 +372,7 @@ en: {
   compass: ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"], utc: "UTC",
 },
 bn: {
-  title: 'দক্ষিণ মেরু <span>উইন্ডো</span> প্ল্যানার',
+  title: 'দক্ষিণ মেরু <span>উইন্ডো</span> প্ল্যানার', playGame: "গেম খেলো: ছায়ার সাথে দৌড়",
   question: 'চাঁদের দক্ষিণ মেরুতে কোথায় আর কবে নামলে ল্যান্ডার <b>বিদ্যুতের জন্য সূর্যের আলো</b> পাবে আর <em>যোগাযোগের জন্য পৃথিবী দেখতে পাবে</em>?',
   step1: "বাম দিক থেকে একটা ল্যান্ডিং সাইট বেছে নাও", step2: "তারিখ বেছে নাও", step3: "উত্তর পড়ো আর Play চাপো",
   pickSite: "ল্যান্ডিং সাইট বেছে নাও", pickDates: "তারিখ বেছে নাও", startDate: "শুরুর তারিখ", howLong: "কত দিন",
