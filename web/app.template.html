@@ -1,0 +1,863 @@
+<title>South Pole Window Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Hind+Siliguri:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: guided mission console. Question + plain-language verdict first, then the sky view with a
+   Play control, the timeline, and comparison/landing windows. Sun = amber, Earth = blue, ground = regolith grey. */
+:root {
+  --bg: #eef0f1;
+  --panel: #fbfbfa;
+  --ink: #1b2127;
+  --muted: #5d6771;
+  --line: #d3d8dc;
+  --regolith: #b9b6ae;
+  --regolith-edge: #8f8b82;
+  --sky: #e3e8ec;
+  --sun: #c7770a;
+  --earth: #2463b8;
+  --both: #3f7a4f;
+  --warn: #b0452e;
+  --focus: #2463b8;
+  --on-accent: #ffffff;
+  --display: "Barlow Condensed", "Hind Siliguri", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", "Hind Siliguri", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", "Hind Siliguri", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151a; --panel: #181e24; --ink: #e4e7ea; --muted: #97a1ab; --line: #2b333b;
+    --regolith: #4a4843; --regolith-edge: #77736a; --sky: #0c1014;
+    --sun: #f0a531; --earth: #6aa4f0; --both: #6fbf82; --warn: #ec7a5f; --focus: #6aa4f0; --on-accent: #11151a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151a; --panel: #181e24; --ink: #e4e7ea; --muted: #97a1ab; --line: #2b333b;
+  --regolith: #4a4843; --regolith-edge: #77736a; --sky: #0c1014;
+  --sun: #f0a531; --earth: #6aa4f0; --both: #6fbf82; --warn: #ec7a5f; --focus: #6aa4f0; --on-accent: #11151a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 14.5px/1.55 var(--body); }
+.wrap { max-width: 1320px; margin: 0 auto; padding-inline: 20px; padding-block: 18px 40px; }
+@media (max-width: 480px) { .wrap { padding-inline: 16px; } }
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; margin-bottom: 14px; }
+h1 { font: 700 2.1rem/1 var(--display); letter-spacing: .01em; margin: 0; text-wrap: balance; }
+h1 span { color: var(--sun); }
+.lang { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--panel); }
+.lang button { border: 0; background: none; border-radius: 999px; padding: 5px 14px; font-weight: 600; }
+.lang button[aria-pressed=true] { background: var(--ink); color: var(--panel); }
+.intro { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px 28px; align-items: center;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding-block: 14px; margin-bottom: 18px; }
+@media (max-width: 900px) { .intro { grid-template-columns: minmax(0, 1fr); } }
+.intro .q { font: 500 1.2rem/1.4 var(--body); margin: 0; text-wrap: balance; }
+.intro .q b { color: var(--sun); font-weight: 600; } .intro .q em { color: var(--earth); font-style: normal; font-weight: 600; }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+@media (max-width: 520px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+.steps li { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--muted); }
+.steps li b { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--panel); font: 600 12px/1 var(--mono); }
+h2 { font: 600 1.2rem/1.2 var(--display); letter-spacing: .05em; text-transform: uppercase; margin: 0; }
+:lang(bn) h2 { text-transform: none; letter-spacing: 0; font-size: 1.15rem; }
+.sub { color: var(--muted); font-size: 13px; }
+.grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; min-width: 0; }
+.stack { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.rail { display: flex; flex-direction: column; gap: 18px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label, .lbl { font: 600 12.5px/1.3 var(--body); color: var(--ink); }
+.lbl .n { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); color: var(--panel); font: 600 11px/1 var(--mono); margin-right: 6px; }
+select, input[type=date], input[type=number], button {
+  font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; min-width: 0;
+}
+input[type=number] { width: 100%; font-family: var(--mono); }
+button { cursor: pointer; font-weight: 500; }
+button:hover { border-color: var(--muted); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sites { display: flex; flex-direction: column; gap: 2px; max-height: 340px; overflow: auto; margin-inline: -6px; }
+.site { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 6px 8px; border-radius: 4px; border: 1px solid transparent; text-align: left; background: none; }
+.site:hover { background: var(--bg); }
+.site[aria-pressed=true] { background: var(--bg); border-color: var(--sun); }
+.site b { font-weight: 600; font-size: 13.5px; }
+.site small { grid-column: 1 / -1; color: var(--muted); font: 11.5px/1.3 var(--mono); }
+.chip { font: 500 10.5px/1 var(--mono); padding: 3px 6px; border-radius: 3px; background: var(--line); color: var(--muted); align-self: center; white-space: nowrap; }
+.chip.terrain { background: var(--both); color: var(--on-accent); }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0; }
+.hint a, .notes a { color: var(--earth); }
+details { border-top: 1px solid var(--line); padding-top: 12px; }
+details > summary { cursor: pointer; font-weight: 600; font-size: 13px; list-style-position: inside; }
+details[open] > summary { margin-bottom: 12px; }
+details .field + .field { margin-top: 12px; }
+
+/* verdict */
+.verdict { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 18px; align-items: start; border-left: 5px solid var(--both); }
+.verdict.ok { border-left-color: var(--sun); } .verdict.hard { border-left-color: var(--warn); }
+.verdict .tag { display: inline-block; font: 600 11.5px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 5px 8px; border-radius: 3px; background: var(--both); color: var(--on-accent); }
+.verdict.ok .tag { background: var(--sun); } .verdict.hard .tag { background: var(--warn); }
+:lang(bn) .verdict .tag { text-transform: none; letter-spacing: 0; font-family: var(--body); }
+.verdict h3 { font: 600 1.45rem/1.2 var(--display); margin: 8px 0 6px; text-wrap: balance; }
+:lang(bn) .verdict h3 { font-family: var(--body); font-size: 1.25rem; }
+.verdict p { margin: 0 0 4px; max-width: 70ch; }
+.verdict p.warn { color: var(--warn); font-weight: 500; }
+.verdict .where { font: 12px/1.4 var(--mono); color: var(--muted); text-align: right; }
+@media (max-width: 640px) { .verdict { grid-template-columns: minmax(0, 1fr); } .verdict .where { text-align: left; } }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+@media (max-width: 700px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpi { background: var(--panel); padding: 12px 14px; min-width: 0; }
+.kpi .v { font: 600 1.9rem/1.05 var(--display); font-variant-numeric: tabular-nums; }
+.kpi .v small { font-size: .55em; color: var(--muted); font-weight: 500; }
+.kpi .k { font: 600 12.5px/1.3 var(--body); }
+.kpi .n { font-size: 12px; color: var(--muted); }
+.kpi.sun .v { color: var(--sun); } .kpi.earth .v { color: var(--earth); } .kpi.both .v { color: var(--both); }
+
+.head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 14px; margin-bottom: 10px; }
+canvas { display: block; width: 100%; touch-action: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.player { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
+.play { display: inline-flex; align-items: center; gap: 8px; background: var(--ink); color: var(--panel); border-color: var(--ink); padding: 8px 16px; font-weight: 600; }
+.play:hover { border-color: var(--ink); opacity: .9; }
+.play svg { width: 12px; height: 12px; fill: currentColor; }
+.speed { padding: 7px 6px; }
+.player input[type=range] { flex: 1 1 220px; accent-color: var(--sun); min-width: 0; }
+.now { font: 500 13px/1.3 var(--mono); font-variant-numeric: tabular-nums; }
+.status { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+@media (max-width: 560px) { .status { grid-template-columns: minmax(0, 1fr); } }
+.pill { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); font-size: 13.5px; font-weight: 500; }
+.pill .dot { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--line); }
+.pill.sun.on .dot { background: var(--sun); } .pill.earth.on .dot { background: var(--earth); }
+.pill.sun.on { border-color: var(--sun); } .pill.earth.on { border-color: var(--earth); }
+.pill.off { color: var(--muted); }
+.pill small { display: block; font: 11.5px/1.3 var(--mono); color: var(--muted); font-weight: 400; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th { font: 600 12px/1.25 var(--body); color: var(--muted); cursor: pointer; user-select: none; vertical-align: bottom; }
+th:first-child, td:first-child { text-align: left; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--bg); }
+tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--sun); }
+td .bar { display: inline-block; height: 6px; border-radius: 3px; vertical-align: middle; margin-right: 8px; }
+.ref { color: var(--muted); }
+.windows { display: flex; flex-direction: column; gap: 8px; }
+.win { display: grid; grid-template-columns: 2.2em minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); text-align: left; }
+.win:hover { border-color: var(--muted); }
+.win .rk { font: 600 1.35rem/1 var(--display); color: var(--muted); }
+.win .when { font: 500 13px/1.3 var(--mono); }
+.win .why { font-size: 12px; color: var(--muted); }
+.win .sc { font: 600 1.3rem/1 var(--display); color: var(--both); text-align: right; }
+.win .sc small { display: block; font: 500 10.5px/1.2 var(--body); color: var(--muted); }
+.strip { display: block; height: 8px; margin-top: 6px; grid-column: 2 / -1; border-radius: 2px; }
+.two { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 1100px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.msg { font-size: 12.5px; padding: 8px 10px; border-radius: 4px; background: var(--bg); border-left: 3px solid var(--both); }
+.msg.bad { border-left-color: var(--warn); }
+.gloss { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px 24px; margin: 0; }
+.gloss div { min-width: 0; }
+.gloss dt { font-weight: 600; }
+.gloss dd { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.notes { columns: 2 320px; column-gap: 28px; font-size: 13px; color: var(--muted); }
+.notes p { margin: 0 0 10px; break-inside: avoid; }
+.notes b { color: var(--ink); font-weight: 600; }
+.file { position: relative; }
+.file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.file span { display: block; text-align: center; border: 1px dashed var(--muted); border-radius: 4px; padding: 8px; font-size: 12.5px; color: var(--muted); }
+.file:focus-within span { outline: 2px solid var(--focus); outline-offset: 2px; }
+footer { margin-top: 18px; font: 12px/1.5 var(--mono); color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1 data-i18n-html="title">South Pole <span>Window</span> Planner</h1>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="en" aria-pressed="true">English</button>
+      <button type="button" data-lang="bn" aria-pressed="false">বাংলা</button>
+    </div>
+  </header>
+
+  <div class="intro">
+    <p class="q" data-i18n-html="question">Where and when can a Moon lander near the south pole get <b>sunlight for power</b> and <em>see Earth to talk home</em>?</p>
+    <ol class="steps">
+      <li><b>1</b><span data-i18n="step1">Pick a landing site on the left</span></li>
+      <li><b>2</b><span data-i18n="step2">Choose the dates</span></li>
+      <li><b>3</b><span data-i18n="step3">Read the answer and press Play</span></li>
+    </ol>
+  </div>
+
+  <div class="grid">
+    <aside class="rail panel" aria-label="Controls">
+      <div class="field">
+        <span class="lbl"><span class="n">1</span><span data-i18n="pickSite">Choose a landing site</span></span>
+        <div class="sites" id="sites"></div>
+      </div>
+      <div class="field">
+        <span class="lbl"><span class="n">2</span><span data-i18n="pickDates">Choose the dates</span></span>
+        <div class="row2">
+          <div class="field"><label for="start" class="hint" data-i18n="startDate">Start date</label><input type="date" id="start"></div>
+          <div class="field"><label for="span" class="hint" data-i18n="howLong">How long</label>
+            <select id="span">
+              <option value="14" data-i18n="opt14">2 weeks</option>
+              <option value="29.53" data-i18n="opt29">1 Moon day (29.5 days)</option>
+              <option value="60" selected data-i18n="opt60">2 months</option>
+              <option value="180" data-i18n="opt180">6 months</option>
+              <option value="365.25" data-i18n="opt365">1 year</option>
+            </select></div>
+        </div>
+        <p class="hint" data-i18n="dateHint">One Moon day lasts about 29.5 Earth days. At the pole, seasons also change how much sunlight reaches the ground over the year.</p>
+      </div>
+
+      <details>
+        <summary data-i18n="advanced">Advanced settings</summary>
+        <div class="field">
+          <label for="mission" data-i18n="missionLen">Mission length (days)</label>
+          <input type="number" id="mission" min="1" max="60" step="1" value="10">
+          <p class="hint" data-i18n="missionHint">Used to rank the best days to land.</p>
+        </div>
+        <div class="field">
+          <label for="mask" data-i18n="maskLbl">Earth must be at least this high (°)</label>
+          <input type="number" id="mask" min="-5" max="10" step="0.5" value="0">
+          <p class="hint" data-i18n="maskHint">Antennas often need Earth a few degrees above the horizon. 0 means just above it.</p>
+        </div>
+        <div class="field">
+          <label for="hmodel" data-i18n="horizonLbl">Ground shape around the site</label>
+          <select id="hmodel">
+            <option value="smooth" data-i18n="hSmooth">Smooth Moon (no mountains)</option>
+            <option value="raised" data-i18n="hRaised">Site on a hill (enter height)</option>
+            <option value="terrain" disabled data-i18n="hTerrain">Real terrain from NASA LOLA (load file)</option>
+          </select>
+          <div class="row2" id="raisedRow" hidden>
+            <input type="number" id="raisedH" min="0" max="6000" step="50" value="1000" aria-label="Height above surrounding ground, metres">
+            <span class="hint" style="align-self:center" data-i18n="metres">metres above the plains</span>
+          </div>
+          <label class="file"><input type="file" id="csv" accept=".csv,.txt" aria-label="Load terrain horizon file"><span data-i18n="loadCsv">Load a terrain file (CSV from horizon_mask.py)</span></label>
+          <div id="csvMsg" hidden></div>
+        </div>
+        <div class="field">
+          <span class="lbl" data-i18n="addSite">Add your own site</span>
+          <div class="row2">
+            <input type="number" id="cLat" step="0.01" min="-90" max="90" aria-label="Latitude, degrees (south is negative)" value="-87.5">
+            <input type="number" id="cLon" step="0.01" min="-180" max="360" aria-label="Longitude, degrees east" value="-10">
+          </div>
+          <p class="hint" data-i18n="latlonHint">Latitude, longitude in degrees. South is negative, west is negative.</p>
+          <button id="cAdd" type="button" data-i18n="addBtn">Add site</button>
+        </div>
+      </details>
+    </aside>
+
+    <main class="stack">
+      <section class="panel verdict" id="verdict" aria-live="polite"></section>
+      <div class="kpis" id="kpis"></div>
+
+      <section class="panel">
+        <div class="head">
+          <div><h2 data-i18n="skyTitle">What you'd see standing there</h2><div class="sub" id="skySub"></div></div>
+          <div class="legend"><span><i style="background:var(--sun)"></i><span data-i18n="sun">Sun</span></span><span><i style="background:var(--earth)"></i><span data-i18n="earth">Earth</span></span><span><i style="background:var(--regolith)"></i><span data-i18n="ground">Ground and mountains</span></span></div>
+        </div>
+        <canvas id="sky" height="250" aria-label="Horizon panorama with Sun and Earth"></canvas>
+        <div class="player">
+          <button type="button" class="play" id="play"><svg viewBox="0 0 12 12" aria-hidden="true"><path id="playIcon" d="M2 1l9 5-9 5z"/></svg><span id="playTxt">Play</span></button>
+          <select id="speed" class="speed" aria-label="Speed"><option value="40">0.5×</option><option value="20" selected>1×</option><option value="8">2.5×</option></select>
+          <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Time">
+          <span class="now" id="now"></span>
+        </div>
+        <div class="status" id="status"></div>
+      </section>
+
+      <section class="panel">
+        <div class="head">
+          <div><h2 data-i18n="tlTitle">Over the whole period</h2><div class="sub" data-i18n="tlSub">Lines above zero mean the Sun or Earth is visible. The colored bars show when the lander has power, a signal to Earth, or both. Tap anywhere to jump to that time.</div></div>
+        </div>
+        <canvas id="tl" height="300" aria-label="Sun and Earth height above the horizon over time"></canvas>
+      </section>
+
+      <div class="two">
+        <section class="panel">
+          <div class="head"><div><h2 data-i18n="cmpTitle">Compare landing sites</h2><div class="sub" data-i18n="cmpSub">Same dates for every site. Tap a row to open it, tap a heading to sort.</div></div></div>
+          <div class="tablewrap"><table id="cmp"></table></div>
+          <p class="hint" style="margin-top:8px" data-i18n-html="pubHint">“Published” is a long-term sunlight figure from studies that include real mountains (<a href="https://en.wikipedia.org/wiki/Peak_of_eternal_light" target="_blank" rel="noopener">summary</a>). A big gap from our smooth-Moon number shows how much the terrain matters.</p>
+        </section>
+        <section class="panel">
+          <div class="head"><div><h2 data-i18n="winTitle">Best times to land</h2><div class="sub" id="winSub"></div></div></div>
+          <div class="windows" id="wins"></div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <h2 style="margin-bottom:12px" data-i18n="glossTitle">Words used here</h2>
+        <dl class="gloss" id="gloss"></dl>
+      </section>
+
+      <section class="panel">
+        <details>
+          <summary data-i18n="howTitle">How the numbers are calculated</summary>
+          <div class="notes" id="notes"></div>
+        </details>
+      </section>
+    </main>
+  </div>
+  <footer data-i18n="footer">Sun and Earth positions: NASA JPL DE421 ephemeris with lunar librations · Moon ME frame · all times UTC · Built for NASA Space Apps 2026, CLPS Lunar Mission Browser</footer>
+</div>
+
+<script>
+const GEOMETRY = __GEOMETRY__;
+</script>
+<script>
+(() => {
+"use strict";
+/* ---------- words ---------- */
+const TXT = {
+en: {
+  title: 'South Pole <span>Window</span> Planner',
+  question: 'Where and when can a Moon lander near the south pole get <b>sunlight for power</b> and <em>see Earth to talk home</em>?',
+  step1: "Pick a landing site on the left", step2: "Choose the dates", step3: "Read the answer and press Play",
+  pickSite: "Choose a landing site", pickDates: "Choose the dates", startDate: "Start date", howLong: "How long",
+  opt14: "2 weeks", opt29: "1 Moon day (29.5 days)", opt60: "2 months", opt180: "6 months", opt365: "1 year",
+  dateHint: "One Moon day lasts about 29.5 Earth days. At the pole, seasons also change how much sunlight reaches the ground over the year.",
+  advanced: "Advanced settings", missionLen: "Mission length (days)", missionHint: "Used to rank the best days to land.",
+  maskLbl: "Earth must be at least this high (°)", maskHint: "Antennas often need Earth a few degrees above the horizon. 0 means just above it.",
+  horizonLbl: "Ground shape around the site", hSmooth: "Smooth Moon (no mountains)", hRaised: "Site on a hill (enter height)", hTerrain: "Real terrain from NASA LOLA (load file)",
+  metres: "metres above the plains", loadCsv: "Load a terrain file (CSV from horizon_mask.py)",
+  addSite: "Add your own site", latlonHint: "Latitude, longitude in degrees. South is negative, west is negative.", addBtn: "Add site", custom: "My site",
+  sun: "Sun", earth: "Earth", ground: "Ground and mountains", sky: "sky",
+  skyTitle: "What you'd see standing there",
+  skySub: "Looking all the way around you, from north (N) back to north. The grey shape is the ground; anything above it is visible. Faint dots trace the Sun and Earth over the whole period.",
+  hSmoothS: "smooth Moon", hRaisedS: "on a {h} m hill", hTerrainS: "real terrain",
+  play: "Play", pause: "Pause",
+  sunUp: "Sun is up", sunUpN: "solar panels are charging", sunPart: "Sun is partly hidden", sunPartN: "{p}% of the Sun is visible", sunDown: "Sun is down", sunDownN: "running on batteries",
+  earthUp: "Earth is visible", earthUpN: "can send data home", earthDown: "Earth is hidden", earthDownN: "no signal to Earth",
+  tlTitle: "Over the whole period",
+  tlSub: "Lines above zero mean the Sun or Earth is visible. The colored bars show when the lander has power, a signal to Earth, or both. Tap anywhere to jump to that time.",
+  yAxis: "degrees above horizon", bPower: "Power", bSignal: "Signal", bBoth: "Both",
+  cmpTitle: "Compare landing sites", cmpSub: "Same dates for every site. Tap a row to open it, tap a heading to sort.",
+  cSite: "Site", cSun: "Sunlight", cDark: "Longest dark", cEarth: "Earth in view", cBoth: "Both", cPub: "Published",
+  pubHint: '“Published” is a long-term sunlight figure from studies that include real mountains (<a href="https://en.wikipedia.org/wiki/Peak_of_eternal_light" target="_blank" rel="noopener">summary</a>). A big gap from our smooth-Moon number shows how much the terrain matters.',
+  winTitle: "Best times to land",
+  winSub: "For a {n}-day mission at {site}. Higher % means more time with power and a signal at the same time.",
+  winWorst: "longest time without both: {d}", winSc: "power + signal",
+  winNone: "No landing time in these dates has the Sun and Earth up together here. Try longer dates, another site, or lower the Earth height in Advanced settings.",
+  kSun: "Sunlight (power)", kSunN: "of the time", kDark: "Longest dark stretch", kDarkN0: "Sun never sets", kDarkN: "in one go",
+  kEarth: "Earth in view (signal)", kEarthN: "of the time", kBoth: "Power and signal together", kBothN: "of the time",
+  vGreat: "Good place to land", vOk: "Possible, with planning", vHard: "Hard place to survive",
+  vHeadGreat: "{site} looks good for these dates", vHeadOk: "{site} can work, but plan for gaps", vHeadHard: "{site} is tough for these dates",
+  vSunAll: "The Sun never sets here in this period, so the solar panels always get light.",
+  vSun: "The Sun is up {p}% of the time. The longest stretch of darkness is {d}.",
+  vEarthAll: "Earth is always in view, so the lander can always send data home.",
+  vEarthNone: "Earth never rises here in this period, so the lander can't talk home directly. It would need a relay satellite.",
+  vEarth: "Earth is visible {p}% of the time, so the lander can talk home that often. The longest silence is {d}.",
+  vWarn: "Warning: most small landers can't survive more than a few days without sunlight. The cold drains the batteries.",
+  vTerrain: "This uses a smooth Moon with no mountains. Load real terrain in Advanced settings for a site-specific answer.",
+  days: "{n} days", day1: "1 day", hours: "{n} hours", hour1: "1 hour", zero: "none",
+  glossTitle: "Words used here",
+  gloss: [["Horizon", "The line where the ground meets the sky. Mountains and crater rims make it higher in some directions."],
+          ["Elevation", "How high something is above the flat horizon, in degrees. 0° is right on the horizon, 90° is straight up."],
+          ["Direct-to-Earth link", "The lander talking to Earth by radio. It only works when Earth is above the horizon."],
+          ["Moon day", "About 29.5 Earth days from one sunrise to the next. Away from the poles, that's roughly 2 weeks of light and 2 weeks of night."],
+          ["Why the pole is special", "The Moon's axis is tilted only 1.5°, so at the pole the Sun circles around the horizon instead of rising high."],
+          ["Libration", "The Moon wobbles slightly as it orbits, so from the pole Earth slowly bobs above and below the horizon."],
+          ["LOLA", "A laser on NASA's Lunar Reconnaissance Orbiter that mapped the height of the whole Moon."],
+          ["CLPS", "Commercial Lunar Payload Services: NASA pays companies to fly science to the Moon on their landers."]],
+  notes: ["<b>Where the Sun and Earth are.</b> From NASA JPL's DE421 ephemeris, including the Moon's wobble (librations), turned into the Moon-fixed frame used by NASA's LOLA maps. Light travel time and the site's offset from the Moon's centre are included. The data covers 2026–2032 at 3-hour steps. The Moon orientation agrees with the independent IAU model to within 15 arcseconds.",
+          "<b>Power.</b> Counted when at least half of the Sun's disk is above the horizon in the Sun's direction.",
+          "<b>Signal.</b> Counted when Earth's centre is above the horizon plus the minimum height set in Advanced settings.",
+          "<b>Ground shape.</b> Smooth Moon uses a perfect sphere. Site on a hill lowers the horizon the way it would for a peak above flat plains. Real terrain uses a skyline computed from NASA LOLA elevation maps with the included Python tool. Only real terrain captures shadows from crater rims.",
+          "<b>Best times to land.</b> Every 6 hours in the chosen dates is tested as a landing time. The score is the share of the mission with power and signal together; ties go to the shorter worst gap. Landing needs the Sun and Earth both up.",
+          "<b>Limits.</b> Site coordinates come from published studies and are approximate. Relay satellites, ground-station schedules, temperature and slope safety are not included."],
+  footer: "Sun and Earth positions: NASA JPL DE421 ephemeris with lunar librations · Moon ME frame · all times UTC · Built for NASA Space Apps 2026, CLPS Lunar Mission Browser",
+  compass: ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"], utc: "UTC",
+},
+bn: {
+  title: 'দক্ষিণ মেরু <span>উইন্ডো</span> প্ল্যানার',
+  question: 'চাঁদের দক্ষিণ মেরুতে কোথায় আর কবে নামলে ল্যান্ডার <b>বিদ্যুতের জন্য সূর্যের আলো</b> পাবে আর <em>যোগাযোগের জন্য পৃথিবী দেখতে পাবে</em>?',
+  step1: "বাম দিক থেকে একটা ল্যান্ডিং সাইট বেছে নাও", step2: "তারিখ বেছে নাও", step3: "উত্তর পড়ো আর Play চাপো",
+  pickSite: "ল্যান্ডিং সাইট বেছে নাও", pickDates: "তারিখ বেছে নাও", startDate: "শুরুর তারিখ", howLong: "কত দিন",
+  opt14: "২ সপ্তাহ", opt29: "চাঁদের ১ দিন (২৯.৫ দিন)", opt60: "২ মাস", opt180: "৬ মাস", opt365: "১ বছর",
+  dateHint: "চাঁদের এক দিন প্রায় ২৯.৫ পৃথিবী-দিন। মেরুতে বছরের ঋতু অনুযায়ী আলোর পরিমাণও বদলায়।",
+  advanced: "উন্নত সেটিংস", missionLen: "মিশন কত দিনের", missionHint: "নামার সেরা সময় বের করতে এটা লাগে।",
+  maskLbl: "পৃথিবী অন্তত কত ডিগ্রি উপরে থাকতে হবে", maskHint: "অ্যান্টেনার জন্য অনেক সময় পৃথিবীকে দিগন্তের কয়েক ডিগ্রি উপরে থাকতে হয়। ০ মানে দিগন্তের ঠিক উপরে।",
+  horizonLbl: "সাইটের চারপাশের জমির আকার", hSmooth: "মসৃণ চাঁদ (পাহাড় নেই)", hRaised: "পাহাড়ের উপর সাইট (উচ্চতা দাও)", hTerrain: "NASA LOLA-র আসল ভূখণ্ড (ফাইল লোড করো)",
+  metres: "মিটার, সমতলের চেয়ে উঁচু", loadCsv: "ভূখণ্ডের ফাইল লোড করো (horizon_mask.py থেকে CSV)",
+  addSite: "নিজের সাইট যোগ করো", latlonHint: "অক্ষাংশ, দ্রাঘিমাংশ ডিগ্রিতে। দক্ষিণ আর পশ্চিম হলে মাইনাস।", addBtn: "সাইট যোগ করো", custom: "আমার সাইট",
+  sun: "সূর্য", earth: "পৃথিবী", ground: "মাটি আর পাহাড়", sky: "আকাশ",
+  skyTitle: "ওখানে দাঁড়ালে যা দেখতে",
+  skySub: "তোমার চারপাশে পুরো এক চক্কর, উত্তর (N) থেকে আবার উত্তর পর্যন্ত। ধূসর অংশটা মাটি; এর উপরে যা আছে তা দেখা যায়। হালকা বিন্দুগুলো পুরো সময়ে সূর্য আর পৃথিবীর পথ দেখায়।",
+  hSmoothS: "মসৃণ চাঁদ", hRaisedS: "{h} মিটার উঁচু পাহাড়ে", hTerrainS: "আসল ভূখণ্ড",
+  play: "চালাও", pause: "থামাও",
+  sunUp: "সূর্য উঠে আছে", sunUpN: "সোলার প্যানেল চার্জ হচ্ছে", sunPart: "সূর্য আংশিক ঢাকা", sunPartN: "সূর্যের {p}% দেখা যাচ্ছে", sunDown: "সূর্য ডুবে আছে", sunDownN: "ব্যাটারিতে চলছে",
+  earthUp: "পৃথিবী দেখা যাচ্ছে", earthUpN: "বাড়িতে ডেটা পাঠানো যাবে", earthDown: "পৃথিবী আড়ালে", earthDownN: "পৃথিবীর সাথে কোনো সিগন্যাল নেই",
+  tlTitle: "পুরো সময় জুড়ে",
+  tlSub: "লাইন শূন্যের উপরে মানে সূর্য বা পৃথিবী দেখা যাচ্ছে। রঙিন বারগুলো দেখায় কখন বিদ্যুৎ, কখন পৃথিবীর সিগন্যাল, আর কখন দুটোই আছে। যেকোনো জায়গায় চাপলে সেই সময়ে চলে যাবে।",
+  yAxis: "দিগন্ত থেকে কত ডিগ্রি উপরে", bPower: "বিদ্যুৎ", bSignal: "সিগন্যাল", bBoth: "দুটোই",
+  cmpTitle: "ল্যান্ডিং সাইট তুলনা", cmpSub: "সব সাইটের জন্য একই তারিখ। কোনো সারিতে চাপলে সেটা খুলবে, শিরোনামে চাপলে সাজানো হবে।",
+  cSite: "সাইট", cSun: "সূর্যের আলো", cDark: "লম্বা অন্ধকার", cEarth: "পৃথিবী দেখা যায়", cBoth: "দুটোই", cPub: "প্রকাশিত",
+  pubHint: '“প্রকাশিত” হলো আসল পাহাড়-পর্বত ধরে করা গবেষণায় পাওয়া দীর্ঘমেয়াদি আলোর হিসাব (<a href="https://en.wikipedia.org/wiki/Peak_of_eternal_light" target="_blank" rel="noopener">সারাংশ</a>)। আমাদের মসৃণ-চাঁদের সংখ্যার সাথে বড় পার্থক্য দেখায় ভূখণ্ড কতটা গুরুত্বপূর্ণ।',
+  winTitle: "নামার সেরা সময়",
+  winSub: "{site}-এ {n} দিনের মিশনের জন্য। % যত বেশি, বিদ্যুৎ আর সিগন্যাল একসাথে তত বেশি সময় পাওয়া যাবে।",
+  winWorst: "দুটো একসাথে না থাকার সবচেয়ে লম্বা সময়: {d}", winSc: "বিদ্যুৎ + সিগন্যাল",
+  winNone: "এই তারিখগুলোতে এখানে সূর্য আর পৃথিবী একসাথে থাকে এমন কোনো সময় নেই। লম্বা সময়, অন্য সাইট, বা উন্নত সেটিংসে পৃথিবীর উচ্চতা কমিয়ে দেখো।",
+  kSun: "সূর্যের আলো (বিদ্যুৎ)", kSunN: "সময়", kDark: "সবচেয়ে লম্বা অন্ধকার", kDarkN0: "সূর্য ডোবে না", kDarkN: "একটানা",
+  kEarth: "পৃথিবী দেখা যায় (সিগন্যাল)", kEarthN: "সময়", kBoth: "বিদ্যুৎ আর সিগন্যাল একসাথে", kBothN: "সময়",
+  vGreat: "নামার জন্য ভালো জায়গা", vOk: "সম্ভব, তবে পরিকল্পনা লাগবে", vHard: "টিকে থাকা কঠিন",
+  vHeadGreat: "এই তারিখগুলোতে {site} ভালো", vHeadOk: "{site} চলবে, তবে বিরতির জন্য প্রস্তুত থাকতে হবে", vHeadHard: "এই তারিখগুলোতে {site} কঠিন",
+  vSunAll: "এই সময়ে এখানে সূর্য একবারও ডোবে না, তাই সোলার প্যানেল সবসময় আলো পায়।",
+  vSun: "সূর্য {p}% সময় দেখা যায়। সবচেয়ে লম্বা অন্ধকার সময় {d}।",
+  vEarthAll: "পৃথিবী সবসময় দেখা যায়, তাই ল্যান্ডার সবসময় বাড়িতে ডেটা পাঠাতে পারবে।",
+  vEarthNone: "এই সময়ে এখানে পৃথিবী একবারও ওঠে না, তাই সরাসরি যোগাযোগ সম্ভব না। রিলে স্যাটেলাইট লাগবে।",
+  vEarth: "পৃথিবী {p}% সময় দেখা যায়, অর্থাৎ ততটা সময় ল্যান্ডার যোগাযোগ করতে পারবে। সবচেয়ে লম্বা নীরবতা {d}।",
+  vWarn: "সতর্কতা: বেশিরভাগ ছোট ল্যান্ডার কয়েক দিনের বেশি অন্ধকারে টিকতে পারে না। ঠান্ডায় ব্যাটারি শেষ হয়ে যায়।",
+  vTerrain: "এখানে পাহাড়হীন মসৃণ চাঁদ ধরা হয়েছে। সাইটভিত্তিক সঠিক উত্তরের জন্য উন্নত সেটিংসে আসল ভূখণ্ড লোড করো।",
+  days: "{n} দিন", day1: "১ দিন", hours: "{n} ঘণ্টা", hour1: "১ ঘণ্টা", zero: "নেই",
+  glossTitle: "এখানে ব্যবহৃত শব্দ",
+  gloss: [["দিগন্ত (Horizon)", "যেখানে মাটি আর আকাশ মেলে। পাহাড় আর গর্তের কিনারার কারণে কোনো দিকে এটা উঁচু হয়।"],
+          ["উচ্চতা কোণ (Elevation)", "সমতল দিগন্ত থেকে কোনো কিছু কত ডিগ্রি উপরে। ০° মানে ঠিক দিগন্তে, ৯০° মানে মাথার উপরে।"],
+          ["সরাসরি পৃথিবী-যোগাযোগ", "ল্যান্ডার রেডিওতে পৃথিবীর সাথে কথা বলে। পৃথিবী দিগন্তের উপরে থাকলেই কেবল এটা কাজ করে।"],
+          ["চাঁদের দিন", "এক সূর্যোদয় থেকে পরের সূর্যোদয় প্রায় ২৯.৫ পৃথিবী-দিন। মেরু থেকে দূরে এটা মোটামুটি ২ সপ্তাহ আলো আর ২ সপ্তাহ রাত।"],
+          ["মেরু কেন আলাদা", "চাঁদের অক্ষ মাত্র ১.৫° হেলানো, তাই মেরুতে সূর্য উপরে না উঠে দিগন্তের চারপাশে ঘোরে।"],
+          ["লিব্রেশন (Libration)", "ঘোরার সময় চাঁদ হালকা দোলে, তাই মেরু থেকে পৃথিবী ধীরে ধীরে দিগন্তের উপরে-নিচে ওঠানামা করে।"],
+          ["LOLA", "NASA-র Lunar Reconnaissance Orbiter-এর লেজার যন্ত্র, যেটা পুরো চাঁদের উচ্চতার ম্যাপ বানিয়েছে।"],
+          ["CLPS", "Commercial Lunar Payload Services: NASA প্রাইভেট কোম্পানিকে টাকা দেয় যাতে তাদের ল্যান্ডারে বিজ্ঞানের যন্ত্র চাঁদে যায়।"]],
+  notes: ["<b>সূর্য আর পৃথিবী কোথায়।</b> NASA JPL-এর DE421 ephemeris থেকে, চাঁদের দোলন (librations) সহ, NASA-র LOLA ম্যাপের চাঁদ-ভিত্তিক ফ্রেমে রূপান্তর করা। আলোর যাত্রার সময় আর চাঁদের কেন্দ্র থেকে সাইটের দূরত্বও ধরা হয়েছে। ডেটা ২০২৬–২০৩২, প্রতি ৩ ঘণ্টায়। চাঁদের অবস্থান আলাদা IAU মডেলের সাথে ১৫ আর্কসেকেন্ডের মধ্যে মেলে।",
+          "<b>বিদ্যুৎ।</b> সূর্যের চাকতির অন্তত অর্ধেক দিগন্তের উপরে থাকলে গোনা হয়।",
+          "<b>সিগন্যাল।</b> পৃথিবীর কেন্দ্র দিগন্ত আর উন্নত সেটিংসের ন্যূনতম উচ্চতার উপরে থাকলে গোনা হয়।",
+          "<b>জমির আকার।</b> মসৃণ চাঁদ মানে নিখুঁত গোলক। পাহাড়ের উপর সাইট হলে দিগন্ত একটু নিচে নামে। আসল ভূখণ্ড আসে NASA LOLA উচ্চতার ম্যাপ থেকে, সাথের Python টুল দিয়ে। কেবল আসল ভূখণ্ডই গর্তের কিনারার ছায়া ধরতে পারে।",
+          "<b>নামার সেরা সময়।</b> বাছাই করা তারিখে প্রতি ৬ ঘণ্টা পরপর নামার সময় হিসেবে পরীক্ষা করা হয়। স্কোর হলো মিশনের কত অংশে বিদ্যুৎ আর সিগন্যাল একসাথে আছে; সমান হলে যেটায় সবচেয়ে লম্বা বিরতি কম সেটা আগে। নামার মুহূর্তে সূর্য আর পৃথিবী দুটোই থাকতে হবে।",
+          "<b>সীমাবদ্ধতা।</b> সাইটের স্থানাঙ্ক প্রকাশিত গবেষণা থেকে, আনুমানিক। রিলে স্যাটেলাইট, গ্রাউন্ড স্টেশনের সময়সূচি, তাপমাত্রা আর ঢালের নিরাপত্তা ধরা হয়নি।"],
+  footer: "সূর্য আর পৃথিবীর অবস্থান: NASA JPL DE421 ephemeris, চাঁদের দোলন সহ · চাঁদের ME ফ্রেম · সব সময় UTC-তে · NASA Space Apps 2026, CLPS Lunar Mission Browser চ্যালেঞ্জের জন্য তৈরি",
+  compass: ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"], utc: "UTC",
+}};
+let lang = "en";
+try { if (localStorage.getItem("spwp-lang") === "bn") lang = "bn"; } catch (e) {}
+const t = (k, v = {}) => { let s = TXT[lang][k] ?? TXT.en[k] ?? k; if (typeof s === "string") for (const [a, b] of Object.entries(v)) s = s.split("{" + a + "}").join(b); return s; };
+
+const D = Math.PI / 180, R_MOON = 1737.4, SUN_R = 0.2666, HOUR = 3600e3, DAY = 86400e3;
+
+/* ---------- geometry table ---------- */
+const G = (() => {
+  const bin = atob(GEOMETRY.data), buf = new ArrayBuffer(bin.length), u8 = new Uint8Array(buf);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return { t0: GEOMETRY.start_utc_ms, step: GEOMETRY.step_ms, n: GEOMETRY.count, a: new Float32Array(buf) };
+})();
+const T_MIN = G.t0, T_MAX = G.t0 + (G.n - 1) * G.step;
+function geom(ms, out) {
+  let f = (ms - G.t0) / G.step, i = Math.floor(f);
+  if (i < 0) { i = 0; f = 0; } if (i > G.n - 2) { i = G.n - 2; f = G.n - 1; }
+  const w = f - i, a = G.a, p = i * 6, q = p + 6;
+  const sx = a[p] + (a[q] - a[p]) * w, sy = a[p+1] + (a[q+1] - a[p+1]) * w, sz = a[p+2] + (a[q+2] - a[p+2]) * w;
+  const sn = Math.hypot(sx, sy, sz);
+  out[0] = sx / sn; out[1] = sy / sn; out[2] = sz / sn;
+  out[3] = a[p+3] + (a[q+3] - a[p+3]) * w; out[4] = a[p+4] + (a[q+4] - a[p+4]) * w; out[5] = a[p+5] + (a[q+5] - a[p+5]) * w;
+  return out;
+}
+
+/* ---------- sites ---------- */
+const sites = [
+  { id: "A", name: "Shackleton rim A", lat: -89.68, lon: -166.0, pub: 81 },
+  { id: "B", name: "Shackleton ridge B", lat: -89.44, lon: -141.8, pub: 82 },
+  { id: "C", name: "de Gerlache rim C", lat: -88.71, lon: -68.7, pub: 85 },
+  { id: "D", name: "Shackleton rim D", lat: -88.79, lon: 124.5, pub: 86 },
+  { id: "M1", name: "Malapert Mountain M1", lat: -86.04, lon: 2.7, pub: 74 },
+  { id: "M2", name: "Malapert Mountain M2", lat: -86.00, lon: -2.9, pub: 74 },
+  { id: "LC", name: "Cabeus crater (LCROSS)", lat: -84.675, lon: -48.725 },
+  { id: "C3", name: "Chandrayaan-3 landing site", lat: -69.373, lon: 32.319 },
+].map(s => ({ ...s, model: "smooth", raised: 1000, mask: null, maskName: "" }));
+let selId = "B";
+const sel = () => sites.find(s => s.id === selId);
+
+function frame(s) {
+  const la = s.lat * D, lo = s.lon * D, cl = Math.cos(la), sl = Math.sin(la), co = Math.cos(lo), so = Math.sin(lo);
+  return { up: [cl*co, cl*so, sl], e: [-so, co, 0], n: [-sl*co, -sl*so, cl] };
+}
+const dot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+function horizonFn(s) {
+  if (s.model === "terrain" && s.mask) {
+    const m = s.mask;
+    return az => { const f = ((az % 360) + 360) % 360, i = Math.floor(f), w = f - i; return m[i] + (m[(i + 1) % 360] - m[i]) * w; };
+  }
+  if (s.model === "raised") { const dip = -Math.acos(R_MOON / (R_MOON + s.raised / 1000)) / D; return () => dip; }
+  return () => 0;
+}
+function diskFrac(x) {
+  if (x >= 1) return 1; if (x <= -1) return 0;
+  return 1 - (Math.acos(x) - x * Math.sqrt(1 - x * x)) / Math.PI;
+}
+function series(s, t0, t1, step) {
+  const n = Math.max(2, Math.floor((t1 - t0) / step) + 1), f = frame(s), hz = horizonFn(s), g = new Float64Array(6);
+  const P = f.up.map(v => v * R_MOON);
+  const o = { t0, step, n, sEl: new Float32Array(n), sAz: new Float32Array(n), sAlt: new Float32Array(n), sFrac: new Float32Array(n),
+              eEl: new Float32Array(n), eAz: new Float32Array(n), eAlt: new Float32Array(n) };
+  for (let i = 0; i < n; i++) {
+    geom(t0 + i * step, g);
+    const s3 = [g[0], g[1], g[2]];
+    const el = Math.asin(dot(s3, f.up)) / D, az = (Math.atan2(dot(s3, f.e), dot(s3, f.n)) / D + 360) % 360;
+    const v = [g[3] - P[0], g[4] - P[1], g[5] - P[2]], vn = Math.hypot(v[0], v[1], v[2]);
+    v[0] /= vn; v[1] /= vn; v[2] /= vn;
+    const eel = Math.asin(dot(v, f.up)) / D, eaz = (Math.atan2(dot(v, f.e), dot(v, f.n)) / D + 360) % 360;
+    o.sEl[i] = el; o.sAz[i] = az; o.sAlt[i] = el - hz(az); o.sFrac[i] = diskFrac(o.sAlt[i] / SUN_R);
+    o.eEl[i] = eel; o.eAz[i] = eaz; o.eAlt[i] = eel - hz(eaz);
+  }
+  return o;
+}
+function stats(o, mask, a = 0, b = o.n) {
+  let sun = 0, earth = 0, both = 0, pow = 0, dark = 0, maxDark = 0, noc = 0, maxNoc = 0;
+  for (let i = a; i < b; i++) {
+    const p = o.sFrac[i] >= 0.5, e = o.eAlt[i] >= mask;
+    sun += p; earth += e; both += p && e; pow += o.sFrac[i];
+    dark = p ? 0 : dark + 1; if (dark > maxDark) maxDark = dark;
+    noc = e ? 0 : noc + 1; if (noc > maxNoc) maxNoc = noc;
+  }
+  const n = b - a, h = o.step / HOUR;
+  return { sun: sun / n, earth: earth / n, both: both / n, power: pow / n, maxDarkH: maxDark * h, maxNocH: maxNoc * h };
+}
+
+/* ---------- formatting ---------- */
+const pad = x => String(x).padStart(2, "0");
+const fmt = ms => { const d = new Date(ms); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`; };
+const fmtD = ms => { const d = new Date(ms); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`; };
+const pct = x => Math.round(x * 100);
+function dur(h) {
+  if (h < 0.5) return t("zero");
+  if (h >= 36) { const d = h / 24, s = d >= 10 ? Math.round(d) : +d.toFixed(1); return s === 1 ? t("day1") : t("days", { n: s }); }
+  const r = Math.round(h); return r === 1 ? t("hour1") : t("hours", { n: r });
+}
+const latlon = s => `${Math.abs(s.lat).toFixed(2)}°S ${Math.abs(s.lon).toFixed(2)}°${s.lon < 0 ? "W" : "E"}`;
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---------- state ---------- */
+const st = { start: 0, span: 60 * DAY, mission: 10, mask: 0, t: 0, sortKey: "both", sortDir: -1 };
+(() => {
+  let today = Date.UTC(2026, 8, 30);
+  const now = Date.now(); if (now > T_MIN && now < T_MAX - 400 * DAY) { const d = new Date(now); today = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); }
+  st.start = today; st.t = today;
+  $("start").min = fmtD(T_MIN); $("start").max = fmtD(T_MAX - 370 * DAY); $("start").value = fmtD(today);
+})();
+let cur = null, curStats = null;
+const stepFor = span => span <= 61 * DAY ? HOUR : span <= 190 * DAY ? 2 * HOUR : 3 * HOUR;
+
+/* ---------- static text ---------- */
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = t(el.dataset.i18n));
+  document.querySelectorAll("[data-i18n-html]").forEach(el => el.innerHTML = t(el.dataset.i18nHtml));
+  document.querySelectorAll(".lang button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
+  $("gloss").innerHTML = t("gloss").map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join("");
+  $("notes").innerHTML = t("notes").map(p => `<p>${p}</p>`).join("");
+  setPlayUI();
+}
+
+/* ---------- site list ---------- */
+function renderSites() {
+  $("sites").innerHTML = "";
+  for (const s of sites) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "site"; b.setAttribute("aria-pressed", s.id === selId);
+    const tag = s.model === "terrain" ? `<span class="chip terrain">${t("hTerrainS")}</span>` : s.model === "raised" ? `<span class="chip">${t("hRaisedS", { h: s.raised })}</span>` : "";
+    b.innerHTML = `<b>${s.name}</b>${tag}<small>${latlon(s)}</small>`;
+    b.onclick = () => { selId = s.id; syncModelUI(); update(); };
+    $("sites").appendChild(b);
+  }
+}
+function syncModelUI() {
+  const s = sel();
+  $("hmodel").querySelector("[value=terrain]").disabled = !s.mask;
+  $("hmodel").value = s.model; $("raisedH").value = s.raised; $("raisedRow").hidden = s.model !== "raised";
+  $("csvMsg").hidden = !s.mask;
+  if (s.mask) { $("csvMsg").className = "msg"; $("csvMsg").textContent = "✓ " + s.maskName; }
+}
+
+/* ---------- verdict + KPIs ---------- */
+function renderVerdict() {
+  const s = sel(), k = curStats;
+  const level = k.both >= 0.55 && k.maxDarkH <= 96 ? "great" : k.both >= 0.3 ? "ok" : "hard";
+  const tag = { great: t("vGreat"), ok: t("vOk"), hard: t("vHard") }[level];
+  const head = { great: "vHeadGreat", ok: "vHeadOk", hard: "vHeadHard" }[level];
+  const sunLine = k.maxDarkH < 0.5 ? t("vSunAll") : t("vSun", { p: pct(k.sun), d: dur(k.maxDarkH) });
+  const earthLine = k.earth >= 0.995 ? t("vEarthAll") : k.earth < 0.005 ? t("vEarthNone") : t("vEarth", { p: pct(k.earth), d: dur(k.maxNocH) });
+  const v = $("verdict"); v.className = "panel verdict " + level;
+  v.innerHTML = `<div><span class="tag">${tag}</span><h3>${t(head, { site: s.name })}</h3>
+    <p>${sunLine}</p><p>${earthLine}</p>${k.maxDarkH > 96 ? `<p class="warn">${t("vWarn")}</p>` : ""}
+    ${s.model === "smooth" ? `<p class="hint">${t("vTerrain")}</p>` : ""}</div>
+    <div class="where">${fmtD(st.start)} → ${fmtD(st.start + st.span)}<br>${latlon(s)}</div>`;
+}
+function renderKpis() {
+  const k = curStats, big = h => { const txt = dur(h), m = txt.match(/^([\d.০-৯]+)\s(.+)$/); return m ? `${m[1]}<small> ${m[2]}</small>` : txt; };
+  $("kpis").innerHTML = `
+    <div class="kpi sun"><div class="k">${t("kSun")}</div><div class="v">${pct(k.sun)}<small>%</small></div><div class="n">${t("kSunN")}</div></div>
+    <div class="kpi sun"><div class="k">${t("kDark")}</div><div class="v">${big(k.maxDarkH)}</div><div class="n">${k.maxDarkH < .5 ? t("kDarkN0") : t("kDarkN")}</div></div>
+    <div class="kpi earth"><div class="k">${t("kEarth")}</div><div class="v">${pct(k.earth)}<small>%</small></div><div class="n">${t("kEarthN")}</div></div>
+    <div class="kpi both"><div class="k">${t("kBoth")}</div><div class="v">${pct(k.both)}<small>%</small></div><div class="n">${t("kBothN")}</div></div>`;
+}
+
+/* ---------- canvas helper ---------- */
+function setup(cv) {
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1, h = +cv.getAttribute("height");
+  cv.style.height = h + "px"; cv.width = Math.round(r.width * dpr); cv.height = Math.round(h * dpr);
+  const c = cv.getContext("2d"); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { c, w: r.width, h };
+}
+const idxAt = tm => Math.max(0, Math.min(cur.n - 1, Math.round((tm - cur.t0) / cur.step)));
+
+/* ---------- sky panorama ---------- */
+function drawSky() {
+  const { c, w, h } = setup($("sky")), s = sel(), hz = horizonFn(s), o = cur;
+  const L = 36, Rr = 10, T = 10, B = 26, pw = w - L - Rr, ph = h - T - B;
+  let hmax = 0, hmin = 0; for (let a = 0; a < 360; a += 2) { hmax = Math.max(hmax, hz(a)); hmin = Math.min(hmin, hz(a)); }
+  let smax = -90; for (let i = 0; i < o.n; i++) smax = Math.max(smax, o.sEl[i], o.eEl[i]);
+  const yTop = Math.ceil(Math.max(smax, hmax) + 1.5), yBot = Math.floor(Math.min(-3, hmin - 1));
+  const X = az => L + az / 360 * pw, Y = el => T + (yTop - el) / (yTop - yBot) * ph;
+  c.fillStyle = css("--sky"); c.fillRect(L, T, pw, ph);
+  c.font = `11px ${css("--mono")}`; c.fillStyle = css("--muted"); c.strokeStyle = css("--line"); c.lineWidth = 1;
+  const yStep = (yTop - yBot) > 24 ? 5 : 2;
+  c.textAlign = "right"; c.textBaseline = "middle";
+  for (let e = Math.ceil(yBot / yStep) * yStep; e <= yTop; e += yStep) { c.beginPath(); c.moveTo(L, Y(e) + .5); c.lineTo(L + pw, Y(e) + .5); c.stroke(); c.fillText(e + "°", L - 5, Y(e)); }
+  c.textAlign = "center"; c.textBaseline = "top";
+  const comp = t("compass");
+  comp.forEach((lab, k) => { const a = k * 45; c.beginPath(); c.moveTo(X(a) + .5, T); c.lineTo(X(a) + .5, T + ph); c.stroke(); c.fillText(lab, X(a), T + ph + 7); });
+  const path = (azA, elA, col) => {
+    c.fillStyle = col; c.globalAlpha = .35;
+    const k = Math.max(1, Math.floor(o.n / 900));
+    for (let i = 0; i < o.n; i += k) c.fillRect(X(azA[i]) - 1, Y(elA[i]) - 1, 2, 2);
+    c.globalAlpha = 1;
+  };
+  path(o.sAz, o.sEl, css("--sun")); path(o.eAz, o.eEl, css("--earth"));
+  c.beginPath(); c.moveTo(L, T + ph);
+  for (let a = 0; a <= 360; a += .5) c.lineTo(X(a), Y(hz(a)));
+  c.lineTo(L + pw, T + ph); c.closePath(); c.fillStyle = css("--regolith"); c.fill();
+  c.beginPath(); for (let a = 0; a <= 360; a += .5) (a ? c.lineTo : c.moveTo).call(c, X(a), Y(hz(a)));
+  c.strokeStyle = css("--regolith-edge"); c.lineWidth = 1.2; c.stroke();
+  // area labels
+  c.font = `500 12px ${css("--body")}`; c.textAlign = "left"; c.textBaseline = "top"; c.fillStyle = css("--muted");
+  c.fillText(t("sky"), L + 8, T + 6);
+  c.textBaseline = "bottom"; c.fillStyle = css("--ink"); c.globalAlpha = .7;
+  c.fillText(t("ground"), L + 8, T + ph - 6); c.globalAlpha = 1;
+  const i = idxAt(st.t);
+  const body = (az, el, col, r, label) => {
+    c.save(); c.beginPath(); c.rect(L, T, pw, ph); c.clip();
+    c.beginPath(); c.arc(X(az), Y(el), r, 0, 2 * Math.PI); c.fillStyle = col; c.fill();
+    c.lineWidth = 2; c.strokeStyle = css("--panel"); c.stroke(); c.restore();
+    c.fillStyle = col; c.font = `600 12.5px ${css("--body")}`; c.textAlign = "left"; c.textBaseline = "bottom";
+    const tx = Math.min(X(az) + r + 4, L + pw - 60); c.fillText(label, tx, Math.max(T + 16, Y(el) - r));
+  };
+  body(o.eAz[i], o.eEl[i], css("--earth"), 8, t("earth"));
+  body(o.sAz[i], o.sEl[i], css("--sun"), 9, t("sun"));
+  c.strokeStyle = css("--line"); c.strokeRect(L + .5, T + .5, pw - 1, ph - 1);
+  const model = s.model === "terrain" ? t("hTerrainS") : s.model === "raised" ? t("hRaisedS", { h: s.raised }) : t("hSmoothS");
+  $("skySub").textContent = `${s.name} (${model}). ${t("skySub")}`;
+}
+
+/* ---------- timeline ---------- */
+let tlGeo = null;
+function drawTimeline() {
+  const { c, w, h } = setup($("tl")), o = cur;
+  const L = lang === "bn" ? 62 : 54, Rr = 10, T = 22, bandH = 10, bands = 3, gap = 5, B = 22 + bands * (bandH + gap) + 6;
+  const pw = w - L - Rr, ph = h - T - B;
+  let lo = -3, hi = 3; for (let i = 0; i < o.n; i++) { lo = Math.min(lo, o.sAlt[i], o.eAlt[i]); hi = Math.max(hi, o.sAlt[i], o.eAlt[i]); }
+  lo = Math.floor(Math.max(lo, -40)) - 1; hi = Math.ceil(Math.min(hi, 40)) + 1;
+  const X = i => L + i / (o.n - 1) * pw, Y = v => T + (hi - v) / (hi - lo) * ph;
+  tlGeo = { L, pw };
+  c.font = `11px ${css("--mono")}`; c.lineWidth = 1;
+  c.fillStyle = css("--muted"); c.textAlign = "left"; c.textBaseline = "bottom"; c.font = `11.5px ${css("--body")}`;
+  c.fillText(t("yAxis"), L, T - 6);
+  c.font = `11px ${css("--mono")}`;
+  const yStep = hi - lo > 30 ? 10 : hi - lo > 12 ? 5 : 2;
+  c.textAlign = "right"; c.textBaseline = "middle";
+  for (let v = Math.ceil(lo / yStep) * yStep; v <= hi; v += yStep) {
+    c.strokeStyle = css("--line"); c.beginPath(); c.moveTo(L, Y(v) + .5); c.lineTo(L + pw, Y(v) + .5); c.stroke();
+    c.fillStyle = css("--muted"); c.fillText(v + "°", L - 5, Y(v));
+  }
+  c.fillStyle = css("--regolith"); c.globalAlpha = .45; c.fillRect(L, Y(0), pw, Y(lo) - Y(0)); c.globalAlpha = 1;
+  c.strokeStyle = css("--regolith-edge"); c.beginPath(); c.moveTo(L, Y(0) + .5); c.lineTo(L + pw, Y(0) + .5); c.stroke();
+  const days = st.span / DAY, tickD = days <= 16 ? 2 : days <= 32 ? 5 : days <= 70 ? 10 : days <= 200 ? 30 : 60;
+  c.textAlign = "center"; c.textBaseline = "top"; c.fillStyle = css("--muted");
+  const bandTop = T + ph + 22;
+  for (let d = 0; d <= days; d += tickD) {
+    const x = L + d * DAY / st.span * pw; c.strokeStyle = css("--line");
+    c.beginPath(); c.moveTo(x + .5, T); c.lineTo(x + .5, T + ph); c.stroke();
+    const dt = new Date(st.start + d * DAY);
+    c.fillText(`${dt.toLocaleString("en", { month: "short", timeZone: "UTC" })} ${dt.getUTCDate()}`, Math.min(Math.max(x, L + 18), L + pw - 18), T + ph + 5);
+  }
+  const line = (arr, col, wid) => {
+    c.beginPath(); for (let i = 0; i < o.n; i++) (i ? c.lineTo : c.moveTo).call(c, X(i), Y(Math.max(lo, Math.min(hi, arr[i]))));
+    c.strokeStyle = col; c.lineWidth = wid; c.lineJoin = "round"; c.stroke();
+  };
+  if (st.mask) { c.setLineDash([4, 4]); c.strokeStyle = css("--earth"); c.lineWidth = 1; c.beginPath(); c.moveTo(L, Y(st.mask)); c.lineTo(L + pw, Y(st.mask)); c.stroke(); c.setLineDash([]); }
+  line(o.eAlt, css("--earth"), 1.8); line(o.sAlt, css("--sun"), 2);
+  const band = (k, test, col, label) => {
+    const y = bandTop + k * (bandH + gap);
+    c.fillStyle = css("--line"); c.fillRect(L, y, pw, bandH); c.fillStyle = col;
+    let run = -1;
+    for (let i = 0; i <= o.n; i++) {
+      const on = i < o.n && test(i);
+      if (on && run < 0) run = i; if (!on && run >= 0) { c.fillRect(X(run), y, Math.max(1, X(i - 1) - X(run) + pw / o.n), bandH); run = -1; }
+    }
+    c.fillStyle = css("--muted"); c.textAlign = "right"; c.textBaseline = "middle"; c.font = `11px ${css("--body")}`; c.fillText(label, L - 6, y + bandH / 2);
+  };
+  band(0, i => o.sFrac[i] >= .5, css("--sun"), t("bPower"));
+  band(1, i => o.eAlt[i] >= st.mask, css("--earth"), t("bSignal"));
+  band(2, i => o.sFrac[i] >= .5 && o.eAlt[i] >= st.mask, css("--both"), t("bBoth"));
+  const ci = idxAt(st.t), cx = X(ci);
+  c.strokeStyle = css("--ink"); c.lineWidth = 1; c.beginPath(); c.moveTo(cx + .5, T); c.lineTo(cx + .5, bandTop + bands * (bandH + gap) - gap); c.stroke();
+  [[o.sAlt, "--sun"], [o.eAlt, "--earth"]].forEach(([a, k]) => { c.beginPath(); c.arc(cx, Y(Math.max(lo, Math.min(hi, a[ci]))), 4, 0, 7); c.fillStyle = css(k); c.fill(); c.strokeStyle = css("--panel"); c.lineWidth = 1.5; c.stroke(); });
+}
+
+/* ---------- status at current time ---------- */
+function renderStatus() {
+  const o = cur, i = idxAt(st.t);
+  $("now").textContent = fmt(o.t0 + i * o.step) + " " + t("utc");
+  const f = o.sFrac[i], e = o.eAlt[i] >= st.mask;
+  const sunCls = f >= .999 ? "on" : f > .001 ? "on" : "off";
+  const sunHead = f >= .999 ? t("sunUp") : f > .001 ? t("sunPart") : t("sunDown");
+  const sunNote = f >= .999 ? t("sunUpN") : f > .001 ? t("sunPartN", { p: Math.round(f * 100) }) : t("sunDownN");
+  $("status").innerHTML = `
+    <div class="pill sun ${sunCls}"><span class="dot"></span><span>${sunHead}: ${sunNote}<small>${o.sEl[i].toFixed(1)}° · ${o.sAz[i].toFixed(0)}°</small></span></div>
+    <div class="pill earth ${e ? "on" : "off"}"><span class="dot"></span><span>${e ? t("earthUp") : t("earthDown")}: ${e ? t("earthUpN") : t("earthDownN")}<small>${o.eEl[i].toFixed(1)}° · ${o.eAz[i].toFixed(0)}°</small></span></div>`;
+  $("scrub").value = Math.round((st.t - st.start) / st.span * 1000);
+}
+const moveTime = () => { drawSky(); drawTimeline(); renderStatus(); };
+
+/* ---------- comparison ---------- */
+const cmpCache = new Map();
+function cmpRows() {
+  const step = stepFor(st.span) * 2;
+  return sites.map(s => {
+    const key = [s.id, s.model, s.raised, s.maskName, st.start, st.span, st.mask].join("|");
+    if (!cmpCache.has(key)) cmpCache.set(key, stats(series(s, st.start, st.start + st.span, step), st.mask));
+    return { s, ...cmpCache.get(key) };
+  });
+}
+function renderCmp() {
+  const rows = cmpRows(), k = st.sortKey, dir = st.sortDir;
+  rows.sort((a, b) => k === "name" ? dir * a.s.name.localeCompare(b.s.name) : k === "pub" ? dir * ((a.s.pub ?? -1) - (b.s.pub ?? -1)) : dir * (a[k] - b[k]));
+  const cols = [["name", t("cSite")], ["sun", t("cSun")], ["maxDarkH", t("cDark")], ["earth", t("cEarth")], ["both", t("cBoth")], ["pub", t("cPub")]];
+  const bar = (v, col) => `<span class="bar" style="width:${Math.round(v * 44)}px;background:var(${col})"></span>`;
+  $("cmp").innerHTML = `<thead><tr>${cols.map(([c, tt]) => `<th data-k="${c}" aria-sort="${c === k ? (dir > 0 ? "ascending" : "descending") : "none"}">${tt}${c === k ? (dir > 0 ? " ▲" : " ▼") : ""}</th>`).join("")}</tr></thead>
+  <tbody>${rows.map(r => `<tr data-id="${r.s.id}" class="${r.s.id === selId ? "sel" : ""}">
+    <td>${r.s.name}${r.s.model === "terrain" ? ` <span class="chip terrain">${t("hTerrainS")}</span>` : ""}</td>
+    <td>${bar(r.sun, "--sun")}${pct(r.sun)}%</td><td>${dur(r.maxDarkH)}</td>
+    <td>${bar(r.earth, "--earth")}${pct(r.earth)}%</td><td>${bar(r.both, "--both")}${pct(r.both)}%</td>
+    <td class="ref">${r.s.pub ? r.s.pub + "%" : "–"}</td></tr>`).join("")}</tbody>`;
+  $("cmp").querySelectorAll("th").forEach(th => th.onclick = () => { const kk = th.dataset.k; if (st.sortKey === kk) st.sortDir *= -1; else { st.sortKey = kk; st.sortDir = kk === "name" || kk === "maxDarkH" ? 1 : -1; } renderCmp(); });
+  $("cmp").querySelectorAll("tbody tr").forEach(tr => tr.onclick = () => { selId = tr.dataset.id; syncModelUI(); update(); });
+}
+
+/* ---------- landing windows ---------- */
+function renderWindows() {
+  const s = sel(), M = st.mission * DAY, step = HOUR;
+  const o = series(s, st.start, st.start + st.span + M, step);
+  const perMission = Math.round(M / step), cand = [];
+  const ok = new Uint8Array(o.n); for (let i = 0; i < o.n; i++) ok[i] = o.sFrac[i] >= .5 && o.eAlt[i] >= st.mask;
+  const pre = new Uint32Array(o.n + 1); for (let i = 0; i < o.n; i++) pre[i + 1] = pre[i] + ok[i];
+  const last = Math.floor(st.span / step);
+  for (let i = 0; i <= last && i + perMission <= o.n; i += 6) {
+    if (!ok[i]) continue;
+    const both = (pre[i + perMission] - pre[i]) / perMission;
+    let run = 0, worst = 0; for (let j = i; j < i + perMission; j++) { run = ok[j] ? 0 : run + 1; if (run > worst) worst = run; }
+    cand.push({ i, both, worst });
+  }
+  cand.sort((a, b) => b.both - a.both || a.worst - b.worst);
+  const picks = [];
+  for (const c of cand) { if (picks.every(p => Math.abs(p.i - c.i) * step >= 3 * DAY)) picks.push(c); if (picks.length === 5) break; }
+  $("winSub").textContent = t("winSub", { n: st.mission, site: s.name });
+  if (!picks.length) { $("wins").innerHTML = `<div class="msg bad">${t("winNone")}</div>`; return; }
+  $("wins").innerHTML = "";
+  picks.forEach((p, k) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "win";
+    const tm = o.t0 + p.i * step;
+    b.innerHTML = `<span class="rk">${k + 1}</span><span><span class="when">${fmt(tm)} ${t("utc")}</span><br><span class="why">${t("winWorst", { d: dur(p.worst * step / HOUR) })}</span></span><span class="sc">${pct(p.both)}%<small>${t("winSc")}</small></span><canvas class="strip" height="8"></canvas>`;
+    b.onclick = () => { stop(); st.t = Math.min(tm, st.start + st.span - 1); moveTime(); $("sky").scrollIntoView({ behavior: "smooth", block: "center" }); };
+    $("wins").appendChild(b);
+    requestAnimationFrame(() => {
+      const cv = b.querySelector("canvas"), { c, w } = setup(cv);
+      for (let j = 0; j < perMission; j++) {
+        const q = p.i + j, x = j / perMission * w;
+        c.fillStyle = ok[q] ? css("--both") : o.sFrac[q] >= .5 ? css("--sun") : o.eAlt[q] >= st.mask ? css("--earth") : css("--line");
+        c.fillRect(x, 0, w / perMission + .6, 8);
+      }
+    });
+  });
+}
+
+/* ---------- play ---------- */
+let playing = false, raf = 0, lastTs = 0;
+function setPlayUI() {
+  $("playTxt").textContent = playing ? t("pause") : t("play");
+  $("playIcon").setAttribute("d", playing ? "M2 1h3v10H2zM7 1h3v10H7z" : "M2 1l9 5-9 5z");
+}
+function tick(ts) {
+  if (!playing) return;
+  const dt = lastTs ? ts - lastTs : 16; lastTs = ts;
+  const secsForPeriod = +$("speed").value;
+  st.t += st.span * dt / (secsForPeriod * 1000);
+  if (st.t >= st.start + st.span - 1) { st.t = st.start + st.span - 1; moveTime(); stop(); return; }
+  moveTime(); raf = requestAnimationFrame(tick);
+}
+function start() { if (st.t >= st.start + st.span - 2 * cur.step) st.t = st.start; playing = true; lastTs = 0; setPlayUI(); raf = requestAnimationFrame(tick); }
+function stop() { playing = false; cancelAnimationFrame(raf); setPlayUI(); }
+$("play").onclick = () => playing ? stop() : start();
+
+/* ---------- update ---------- */
+function update() {
+  const s = sel();
+  cur = series(s, st.start, st.start + st.span, stepFor(st.span));
+  curStats = stats(cur, st.mask);
+  st.t = Math.max(st.start, Math.min(st.t, st.start + st.span - 1));
+  renderSites(); renderVerdict(); renderKpis(); moveTime(); renderCmp(); renderWindows();
+}
+
+/* ---------- controls ---------- */
+document.querySelectorAll(".lang button").forEach(b => b.onclick = () => {
+  lang = b.dataset.lang; try { localStorage.setItem("spwp-lang", lang); } catch (e) {}
+  applyLang(); update();
+});
+$("start").onchange = e => { const v = Date.parse(e.target.value + "T00:00:00Z"); if (!isNaN(v)) { stop(); st.start = Math.max(T_MIN, Math.min(v, T_MAX - st.span)); st.t = st.start; update(); } };
+$("span").onchange = e => { stop(); st.span = +e.target.value * DAY; if (st.start + st.span > T_MAX) st.start = T_MAX - st.span; update(); };
+$("mission").onchange = e => { st.mission = Math.max(1, Math.min(60, +e.target.value || 10)); renderWindows(); };
+$("mask").onchange = e => { st.mask = +e.target.value || 0; update(); };
+$("hmodel").onchange = e => { sel().model = e.target.value; syncModelUI(); update(); };
+$("raisedH").onchange = e => { sel().raised = Math.max(0, +e.target.value || 0); update(); };
+$("scrub").oninput = e => { stop(); st.t = st.start + e.target.value / 1000 * st.span; moveTime(); };
+const tlPick = ev => { if (!tlGeo) return; const r = $("tl").getBoundingClientRect(), f = (ev.clientX - r.left - tlGeo.L) / tlGeo.pw; if (f < 0 || f > 1) return; st.t = st.start + f * st.span; moveTime(); };
+$("tl").addEventListener("pointerdown", ev => { stop(); tlPick(ev); $("tl").setPointerCapture(ev.pointerId); });
+$("tl").addEventListener("pointermove", ev => { if (ev.buttons) tlPick(ev); });
+let nCustom = 0;
+$("cAdd").onclick = () => {
+  const lat = +$("cLat").value, lon = +$("cLon").value;
+  if (!(lat >= -90 && lat <= 90) || !(lon >= -180 && lon <= 360)) return;
+  const id = "X" + (++nCustom);
+  sites.push({ id, name: `${t("custom")} ${nCustom}`, lat, lon: lon > 180 ? lon - 360 : lon, model: "smooth", raised: 1000, mask: null, maskName: "" });
+  selId = id; syncModelUI(); update();
+};
+$("csv").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const txt = await f.text(), s = sel(), meta = {}, pts = [];
+  for (const raw of txt.split(/\r?\n/)) {
+    const ln = raw.trim(); if (!ln) continue;
+    if (ln.startsWith("#")) { const m = ln.match(/^#\s*(\w+)\s*:\s*(.*)$/); if (m) meta[m[1]] = m[2]; continue; }
+    const [a, b] = ln.split(/[,;\s]+/).map(Number); if (isFinite(a) && isFinite(b)) pts.push([((a % 360) + 360) % 360, b]);
+  }
+  const msg = $("csvMsg"); msg.hidden = false;
+  if (pts.length < 8) { msg.className = "msg bad"; msg.textContent = "Couldn't read a horizon from that file. Expected lines of azimuth_deg,horizon_deg."; e.target.value = ""; return; }
+  pts.sort((a, b) => a[0] - b[0]);
+  const mask = new Float32Array(360);
+  for (let az = 0; az < 360; az++) {
+    let j = pts.findIndex(p => p[0] >= az); if (j < 0) j = 0;
+    const p1 = pts[j], p0 = pts[(j - 1 + pts.length) % pts.length];
+    const span = (p1[0] - p0[0] + 360) % 360 || 360, w = ((az - p0[0] + 360) % 360) / span;
+    mask[az] = p0[1] + (p1[1] - p0[1]) * w;
+  }
+  s.mask = mask; s.model = "terrain"; s.maskName = meta.source ? `${f.name} (${meta.source})` : f.name;
+  cmpCache.clear(); syncModelUI();
+  const far = meta.lat && meta.lon && (Math.abs(+meta.lat - s.lat) > .05 || Math.abs(((+meta.lon - s.lon + 540) % 360) - 180) > .5);
+  if (far) { msg.className = "msg bad"; msg.textContent = `Loaded, but this file was made for ${meta.lat}, ${meta.lon}, not ${s.name}.`; }
+  e.target.value = ""; update();
+};
+
+let rT; window.addEventListener("resize", () => { clearTimeout(rT); rT = setTimeout(() => { moveTime(); renderWindows(); }, 120); });
+const redraw = () => { moveTime(); renderWindows(); };
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+applyLang(); syncModelUI(); update();
+if (document.fonts) document.fonts.ready.then(redraw);
+})();
+</script>
