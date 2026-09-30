@@ -1,13 +1,13 @@
 "use client";
-import Link from "next/link";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   DAY, HOUR, T_MAX, T_MIN, parseHorizonCsv, series, stats, stepFor, subLongitudes,
   type HorizonModel, type Series, type Site, type Stats,
 } from "@/lib/ephemeris";
-import { fmt, fmtD, latlon, pct } from "@/lib/format";
+import { fmt, fmtD, pct } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { initialSites } from "@/lib/sites";
+import { SectionHead, StatChips } from "@/components/ui";
 import { PolarMap } from "./PolarMap";
 import { SkyPanorama, Timeline, WindowStrip } from "./Charts";
 
@@ -118,53 +118,43 @@ export function Planner() {
     setCsvMsg(far ? { bad: true, text: t("p.csvFar", { lat: meta.lat, lon: meta.lon, site: site.name }) } : { bad: false, text: "✓ " + f.name });
   };
 
-  const modelLabel = site.model === "terrain" ? t("p.hTerrainS") : site.model === "raised" ? t("p.hRaisedS", { h: site.raised }) : t("p.hSmoothS");
 
   return (
     <main className="wrap">
-      <section className="hero">
-        <div>
-          <div className="eyebrow">{t("p.kicker")}</div>
-          <h1 dangerouslySetInnerHTML={{ __html: t("p.question") }} />
-        </div>
-        <ol className="steps">
-          <li><span>01</span><span>{t("p.step1")}</span></li>
-          <li><span>02</span><span>{t("p.step2")}</span></li>
-          <li><span>03</span><span>{t("p.step3")}</span></li>
-        </ol>
-      </section>
+      <header className="page-head">
+        <h1>{t("p2.title")}</h1>
+        <p>{t("p2.intro")}</p>
+      </header>
 
       <div className="planner">
-        {/* ---------- left rail: site + dates ---------- */}
+        {/* ---------- left: the two inputs ---------- */}
         <aside className="rail" aria-label={t("p.setup")}>
           <section className="panel">
-            <div className="eyebrow"><span className="num">01</span>{t("p.mapTitle")}</div>
-            <p className="hint" style={{ margin: "6px 0 8px" }}>{t("p.mapSub")}</p>
+            <SectionHead step={1} title={t("p2.s1")} help={t("p2.s1h")} />
             <PolarMap sites={sites} selId={selId} both={bothBySite} sunLon={subLon.sun} earthLon={subLon.earth}
               picking={picking} onSelect={select} onPick={addSite} />
-            <div className="map-tools">
-              <span className="hint">{picking ? t("p.dropHint") : latlon(site)}</span>
-              <button type="button" className="btn small" aria-pressed={picking} onClick={() => setPicking(!picking)}>
-                {picking ? t("p.cancel") : "+ " + t("p.dropPin")}
-              </button>
+            <div className="list-head">
+              <span>{t("p.cSite")}</span>
+              <span>{t("p2.listHead")}</span>
             </div>
-            <div className="sites" style={{ marginTop: 12 }}>
+            <div className="sites">
               {sites.map((s) => (
                 <button key={s.id} type="button" className="site" aria-pressed={s.id === selId} onClick={() => select(s.id)}>
                   <span className="sw" />
                   <b>{s.name}</b>
                   {s.model === "terrain" ? <span className="chip terrain">{t("p.hTerrainS")}</span>
-                    : s.model === "raised" ? <span className="chip">{t("p.hRaisedS", { h: s.raised })}</span>
-                    : <span className="val" title={t("p.cBoth")}>{pct(bothBySite.get(s.id) ?? 0)}%</span>}
-                  <small>{latlon(s)}</small>
+                    : <span className="val">{pct(bothBySite.get(s.id) ?? 0)}%</span>}
                 </button>
               ))}
             </div>
+            <button type="button" className="linkbtn" aria-pressed={picking} onClick={() => setPicking(!picking)}>
+              {picking ? t("p.cancel") + " · " + t("p.dropHint") : "+ " + t("p.dropPin")}
+            </button>
           </section>
 
           <section className="panel">
-            <div className="eyebrow"><span className="num">02</span>{t("p.pickDates")}</div>
-            <div className="row2" style={{ marginTop: 12 }}>
+            <SectionHead step={2} title={t("p2.s2")} help={t("p2.s2h")} />
+            <div className="row2">
               <div className="field">
                 <label htmlFor="start">{t("p.startDate")}</label>
                 <input type="date" id="start" min={fmtD(T_MIN)} max={fmtD(START_MAX)} value={fmtD(start)}
@@ -184,7 +174,6 @@ export function Planner() {
                 </select>
               </div>
             </div>
-            <p className="hint" style={{ marginTop: 10 }}>{t("p.dateHint")}</p>
 
             <details className="adv">
               <summary>{t("p.advanced")}</summary>
@@ -237,24 +226,17 @@ export function Planner() {
           </section>
         </aside>
 
-        {/* ---------- results ---------- */}
+        {/* ---------- right: the answer, then the detail views ---------- */}
         <div className="stack">
           <Verdict site={site} k={curStats} start={start} span={span} />
-          <Kpis k={curStats} />
 
           <section className="panel">
-            <div className="panel-head">
-              <div>
-                <div className="eyebrow"><span className="num">03</span>{site.name} · {modelLabel}</div>
-                <h2 className="title">{t("p.skyTitle")}</h2>
-                <p className="sub">{t("p.skySub")}</p>
-              </div>
+            <SectionHead title={t("p2.skyT")} help={t("p2.skyH")}>
               <div className="legend">
                 <span><i style={{ background: "var(--sun)" }} />{t("sun")}</span>
                 <span><i style={{ background: "var(--earth)" }} />{t("earth")}</span>
-                <span><i style={{ background: "var(--regolith)" }} />{t("p.ground")}</span>
               </div>
-            </div>
+            </SectionHead>
             <SkyPanorama o={cur} site={site} t={tNow} />
             <div className="player">
               <button type="button" className="btn solid play" onClick={togglePlay}>
@@ -272,13 +254,7 @@ export function Planner() {
           </section>
 
           <section className="panel">
-            <div className="panel-head">
-              <div>
-                <div className="eyebrow"><span className="num">04</span>{fmtD(start)} → {fmtD(start + span)}</div>
-                <h2 className="title">{t("p.tlTitle")}</h2>
-                <p className="sub">{t("p.tlSub")}</p>
-              </div>
-            </div>
+            <SectionHead title={t("p2.tlT")} help={t("p2.tlH")} />
             <Timeline o={cur} start={start} span={span} mask={mask} t={tNow} onSeek={seek} />
           </section>
         </div>
@@ -290,71 +266,38 @@ export function Planner() {
           onPick={(v) => { seek(v); document.querySelector(".player")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} />
       </div>
 
-      <div className="cta">
-        <div>
-          <h3>{t("p.gameCta")}</h3>
-          <p>{t("p.gameCtaSub")}</p>
-        </div>
-        <Link href="/game" className="btn accent">{t("p.gameCta")} →</Link>
-      </div>
-
-      <section className="panel" style={{ marginTop: 20 }}>
-        <div className="eyebrow">{t("p.glossTitle")}</div>
-        <dl className="gloss" style={{ marginTop: 14 }}>
+      <details className="panel more">
+        <summary>{t("p2.more")}</summary>
+        <dl className="gloss">
           {raw<string[][]>("p.gloss").map(([a, b]) => <div key={a}><dt>{a}</dt><dd>{b}</dd></div>)}
         </dl>
-      </section>
-      <section className="panel" style={{ marginTop: 20 }}>
-        <details className="how">
-          <summary className="eyebrow">{t("p.howTitle")} ↓</summary>
-          <div className="notes">
-            {raw<string[]>("p.notes").map((p) => <p key={p} dangerouslySetInnerHTML={{ __html: p }} />)}
-          </div>
-        </details>
-      </section>
+        <div className="notes">
+          {raw<string[]>("p.notes").map((p) => <p key={p} dangerouslySetInnerHTML={{ __html: p }} />)}
+        </div>
+      </details>
       <footer className="foot" lang={lang}>{t("footer")}</footer>
     </main>
   );
 }
 
-/* ---------- verdict + KPIs ---------- */
+/* ---------- the answer ---------- */
 function Verdict({ site, k, start, span }: { site: Site; k: Stats; start: number; span: number }) {
-  const { t, dur } = useI18n();
+  const { t } = useI18n();
   const level = k.both >= 0.55 && k.maxDarkH <= 96 ? "great" : k.both >= 0.3 ? "ok" : "hard";
-  const tag = { great: t("p.vGreat"), ok: t("p.vOk"), hard: t("p.vHard") }[level];
-  const head = { great: "p.vHeadGreat", ok: "p.vHeadOk", hard: "p.vHeadHard" }[level];
-  const sunLine = k.maxDarkH < 0.5 ? t("p.vSunAll") : t("p.vSun", { p: pct(k.sun), d: dur(k.maxDarkH) });
-  const earthLine = k.earth >= 0.995 ? t("p.vEarthAll") : k.earth < 0.005 ? t("p.vEarthNone") : t("p.vEarth", { p: pct(k.earth), d: dur(k.maxNocH) });
+  const tag = { great: t("p2.vGreat"), ok: t("p2.vOk"), hard: t("p2.vHard") }[level];
+  const body = { great: t("p2.bodyGreat"), ok: t("p2.bodyOk"), hard: t("p2.bodyHard") }[level];
   return (
     <section className={`panel verdict ${level}`} aria-live="polite">
-      <div>
+      <SectionHead step={3} title={t("p2.s3")}>
+        <span className="where">{site.name} · {fmtD(start)} → {fmtD(start + span)}</span>
+      </SectionHead>
+      <div className="verdict-line">
         <span className="tag">{tag}</span>
-        <h3>{t(head, { site: site.name })}</h3>
-        <p>{sunLine}</p>
-        <p>{earthLine}</p>
-        {k.maxDarkH > 96 && <p className="warn">{t("p.vWarn")}</p>}
-        {site.model === "smooth" && <p className="hint" style={{ marginTop: 8 }}>{t("p.vTerrain")}</p>}
+        <span>{body}</span>
       </div>
-      <div className="where">{fmtD(start)} → {fmtD(start + span)}<br />{latlon(site)}</div>
+      {k.maxDarkH > 96 && <p className="warn">⚠ {t("p2.warn")}</p>}
+      <StatChips k={k} />
     </section>
-  );
-}
-
-const Meter = ({ v }: { v: number }) => <div className="meter"><i style={{ width: `${v * 100}%` }} /></div>;
-
-function Kpis({ k }: { k: Stats }) {
-  const { t, dur } = useI18n();
-  const big = (h: number) => {
-    const txt = dur(h), m = txt.match(/^([\d.০-৯]+)\s(.+)$/);
-    return m ? <>{m[1]}<small>{m[2]}</small></> : txt;
-  };
-  return (
-    <div className="kpis">
-      <div className="kpi sun"><div className="k">{t("p.kSun")}</div><div className="v">{pct(k.sun)}<small>%</small></div><div className="n">{t("p.kSunN")}</div><Meter v={k.sun} /></div>
-      <div className="kpi sun"><div className="k">{t("p.kDark")}</div><div className="v">{big(k.maxDarkH)}</div><div className="n">{k.maxDarkH < 0.5 ? t("p.kDarkN0") : t("p.kDarkN")}</div></div>
-      <div className="kpi earth"><div className="k">{t("p.kEarth")}</div><div className="v">{pct(k.earth)}<small>%</small></div><div className="n">{t("p.kEarthN")}</div><Meter v={k.earth} /></div>
-      <div className="kpi both"><div className="k">{t("p.kBoth")}</div><div className="v">{pct(k.both)}<small>%</small></div><div className="n">{t("p.kBothN")}</div><Meter v={k.both} /></div>
-    </div>
   );
 }
 
@@ -367,9 +310,9 @@ function Status({ o, t: tm, mask }: { o: Series; t: number; mask: number }) {
   return (
     <div className="status" aria-live="polite">
       <div className={`pill sun ${f > 0.001 ? "on" : "off"}`}><span className="dot" />
-        <span>{sunHead}: {sunNote}<small>el {o.sEl[i].toFixed(1)}° · az {o.sAz[i].toFixed(0)}°</small></span></div>
+        <span>{sunHead}<small>{sunNote}</small></span></div>
       <div className={`pill earth ${e ? "on" : "off"}`}><span className="dot" />
-        <span>{e ? t("p.earthUp") : t("p.earthDown")}: {e ? t("p.earthUpN") : t("p.earthDownN")}<small>el {o.eEl[i].toFixed(1)}° · az {o.eAz[i].toFixed(0)}°</small></span></div>
+        <span>{e ? t("p.earthUp") : t("p.earthDown")}<small>{e ? t("p.earthUpN") : t("p.earthDownN")}</small></span></div>
     </div>
   );
 }
@@ -386,18 +329,14 @@ const Compare = memo(function Compare({ rows, selId, onSelect }: { rows: Row[]; 
     sortKey === "name" ? dir * a.s.name.localeCompare(b.s.name)
       : sortKey === "pub" ? dir * ((a.s.pub ?? -1) - (b.s.pub ?? -1))
       : dir * (a[sortKey] - b[sortKey]));
-  const cols: [SortKey, string][] = [["name", t("p.cSite")], ["sun", t("p.cSun")], ["maxDarkH", t("p.cDark")], ["earth", t("p.cEarth")], ["both", t("p.cBoth")], ["pub", t("p.cPub")]];
-  const bar = (v: number, col: string) => <span className="bar" style={{ width: Math.round(v * 44), background: `var(${col})` }} />;
+  const cols: [SortKey, string][] = [["name", t("p.cSite")], ["sun", t("p2.cSun")], ["maxDarkH", t("p2.cDark")], ["earth", t("p2.cEarth")], ["both", t("p2.cBoth")], ["pub", t("p.cPub")]];
   return (
     <section className="panel" id="compare">
-      <div className="panel-head"><div>
-        <div className="eyebrow"><span className="num">05</span>{t("p.cmpTitle")}</div>
-        <p className="sub">{t("p.cmpSub")}</p>
-      </div></div>
+      <SectionHead title={t("p2.cmpT")} help={t("p2.cmpH")} />
       <div className="tablewrap">
         <table>
           <thead><tr>{cols.map(([k, label]) => (
-            <th key={k} aria-sort={k === sortKey ? (dir > 0 ? "ascending" : "descending") : "none"}>
+            <th key={k} title={k === "pub" ? t("p2.pubTip") : undefined} aria-sort={k === sortKey ? (dir > 0 ? "ascending" : "descending") : "none"}>
               <button type="button" onClick={() => {
                 if (k === sortKey) setDir(-dir);
                 else { setSortKey(k); setDir(k === "name" || k === "maxDarkH" ? 1 : -1); }
@@ -407,17 +346,16 @@ const Compare = memo(function Compare({ rows, selId, onSelect }: { rows: Row[]; 
             {sorted.map((r) => (
               <tr key={r.s.id} className={r.s.id === selId ? "sel" : ""} onClick={() => onSelect(r.s.id)}>
                 <td>{r.s.name}{r.s.model === "terrain" && <> <span className="chip terrain">{t("p.hTerrainS")}</span></>}</td>
-                <td>{bar(r.sun, "--sun")}{pct(r.sun)}%</td>
+                <td>{pct(r.sun)}%</td>
                 <td>{dur(r.maxDarkH)}</td>
-                <td>{bar(r.earth, "--earth")}{pct(r.earth)}%</td>
-                <td>{bar(r.both, "--both")}{pct(r.both)}%</td>
+                <td>{pct(r.earth)}%</td>
+                <td className="strong">{pct(r.both)}%</td>
                 <td className="ref">{r.s.pub ? r.s.pub + "%" : "–"}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="hint" style={{ marginTop: 10 }} dangerouslySetInnerHTML={{ __html: t("p.pubHint") }} />
     </section>
   );
 });
@@ -452,23 +390,20 @@ const Windows = memo(function Windows({ site, start, span, mission, mask, onPick
         });
         out.push({ tm: o.t0 + c.i * step, both: c.both, worstH: (c.worst * step) / HOUR, cells });
       }
-      if (out.length === 5) break;
+      if (out.length === 3) break;
     }
     return out;
   }, [site, start, span, mission, mask]);
 
   return (
     <section className="panel" id="windows">
-      <div className="panel-head"><div>
-        <div className="eyebrow"><span className="num">06</span>{t("p.winTitle")}</div>
-        <p className="sub">{t("p.winSub", { n: mission, site: site.name })}</p>
-      </div></div>
+      <SectionHead title={t("p2.winT")} help={t("p2.winH", { n: mission })} />
       {picks.length === 0 ? <div className="msg bad">{t("p.winNone")}</div> : (
         <div className="windows">
           {picks.map((p, k) => (
             <button key={p.tm} type="button" className="win" onClick={() => onPick(Math.min(p.tm, start + span - 1))}>
               <span className="rk">{k + 1}</span>
-              <span><span className="when">{fmt(p.tm)} {t("utc")}</span><br /><span className="gapnote">{t("p.winWorst", { d: dur(p.worstH) })}</span></span>
+              <span><span className="when">{fmt(p.tm)} {t("utc")}</span><br /><span className="gapnote">{t("p2.winGap", { d: dur(p.worstH) })}</span></span>
               <span className="sc">{pct(p.both)}%<small>{t("p.winSc")}</small></span>
               <WindowStrip cells={p.cells} />
             </button>

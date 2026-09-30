@@ -60,35 +60,3 @@ export function Sparkline({ sun, earth, height = 90 }: { sun: number[]; earth: n
     </svg>
   );
 }
-
-/** Power: the Sun skims along a jagged horizon, dipping behind a peak. */
-export function PowerArt() {
-  return (
-    <svg className="cart" viewBox="0 0 320 140" aria-hidden="true">
-      <defs>
-        <radialGradient id="sg"><stop offset="0" stopColor="#ffe2a6" /><stop offset=".35" stopColor="#f2a93b" stopOpacity=".7" /><stop offset="1" stopColor="#f2a93b" stopOpacity="0" /></radialGradient>
-        <linearGradient id="gnd" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="var(--regolith)" /><stop offset="1" stopColor="var(--bg-2)" /></linearGradient>
-      </defs>
-      <g className="sun-skim"><circle r="26" fill="url(#sg)" /><circle r="7" fill="#fff1cf" /></g>
-      <path d="M0 96 L40 92 L70 84 L96 90 L130 70 L150 60 L168 74 L200 86 L240 80 L270 90 L320 88 L320 140 L0 140Z" fill="url(#gnd)" />
-      <path d="M0 96 L40 92 L70 84 L96 90 L130 70 L150 60 L168 74 L200 86 L240 80 L270 90 L320 88" fill="none" stroke="var(--regolith-edge)" />
-      <g className="panel-lamp"><rect x="146" y="46" width="8" height="14" rx="1" /></g>
-    </svg>
-  );
-}
-
-/** Link: Earth bobs above and below the horizon as the Moon librates. */
-export function LinkArt() {
-  return (
-    <svg className="cart" viewBox="0 0 320 140" aria-hidden="true">
-      <g className="earth-bob"><circle cx="210" cy="0" r="13" fill="#6ea7f2" /><circle cx="205" cy="-4" r="4" fill="#fff" opacity=".5" /></g>
-      <rect x="0" y="92" width="320" height="48" fill="var(--bg-2)" />
-      <line x1="0" x2="320" y1="92" y2="92" stroke="var(--regolith-edge)" />
-      <g stroke="var(--muted)" strokeWidth="2" fill="none">
-        <path d="M90 92 L96 72 L102 92 M96 72 L96 64" />
-        <path d="M96 64 q10 -6 14 4" />
-      </g>
-      <path className="beam" d="M104 64 L210 30" stroke="#6ea7f2" strokeWidth="1.5" strokeDasharray="4 5" fill="none" />
-    </svg>
-  );
-}

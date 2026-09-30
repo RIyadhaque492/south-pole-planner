@@ -22,13 +22,13 @@ export default async function SitePage({ params }: PageProps<"/sites/[id]">) {
   await connection();
   await ensureGeometry();
   const now = currentTime();
-  const month = outlook(site, now, 30, 3), year = outlook(site, now, 365, 24);
+  const month = outlook(site, now, 30, 3), year = outlook(site, now, 365, 24).stats;
   return (
     <SiteView
       site={site}
       now={skyNow(site, now)}
       month={month}
-      year={{ stats: year.stats, sun: year.sun, earth: year.earth }}
+      year={year}
       others={SITE_SEEDS.filter((s) => s.id !== site.id).map((s) => ({ id: s.id, name: s.name }))}
     />
   );

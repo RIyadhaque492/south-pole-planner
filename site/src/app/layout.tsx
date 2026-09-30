@@ -4,6 +4,7 @@ import { LangProvider } from "@/lib/i18n";
 import { SiteHeader } from "@/components/SiteHeader";
 import "./globals.css";
 import "./landing.css";
+import "./ui.css";
 
 const sans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], style: "normal", variable: "--font-sans" });
 const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], style: "normal", variable: "--font-mono" });

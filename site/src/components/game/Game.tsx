@@ -157,7 +157,7 @@ export function Game() {
           <div className="eyebrow">{t("g.tagline")}</div>
           <h1>Race the <em className="shadow-word">Shadow</em></h1>
         </div>
-        {screen === "pick" && <p className="lede" dangerouslySetInnerHTML={{ __html: t("g.intro") }} />}
+        {screen === "pick" && <p className="lede">{t("g2.intro")}</p>}
       </section>
 
       {screen === "pick" && (
@@ -303,11 +303,11 @@ function PlayScreen({ M, frame, speed, setSpeed, autoPause, setAutoPause, goal, 
               <div><div className="k">{t("g.battery")}</div><div className="v">{Math.round(b * 100)}<small>%</small></div>
                 <div className="meter"><i style={{ width: `${b * 100}%`, background: batCol }} /></div><div className="n">{Math.round(s.bat)} / {CFG.batteryWh} Wh</div></div>
               <div><div className="k">{t("g.stored")}</div><div className="v">{Math.round(s.stored)}<small>MB</small></div>
-                <div className="meter"><i style={{ width: `${(s.stored / CFG.storageMB) * 100}%`, background: "var(--earth)" }} /></div><div className="n">{t("g.maxMb", { n: CFG.storageMB })}</div></div>
+                <div className="n">{t("g.maxMb", { n: CFG.storageMB })}</div></div>
               <div><div className="k">{t("g.sent")}</div><div className="v">{Math.round(s.sent)}<small>MB</small></div>
                 <div className="n">{sc.winBy === "data" ? `/ ${sc.target} MB` : `★ ${sc.stars.filter((x) => x > 1).join(" / ")} MB`}</div></div>
               <div><div className="k">{t("g.clock")}</div><div className="v">{t("g.day", { d: day })}<small>/ {Math.ceil(sc.hours / 24)}</small></div>
-                <div className="meter"><i style={{ width: `${(s.i / sc.hours) * 100}%`, background: "var(--muted)" }} /></div><div className="n">{fmtHour(sc.land + s.i * HOUR)}</div></div>
+                <div className="n">{fmtHour(sc.land + s.i * HOUR)}</div></div>
             </div>
           </div>
           <div className="panel">
