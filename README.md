@@ -13,6 +13,11 @@ It opens in any browser as a single file (`web/index.html`). No server, no insta
 It comes with **Race the Shadow** (`web/game.html`), a survival game for students and the public that runs on the same
 real sky data: keep a lander alive through the lunar night and send science home while Earth is up. See `GAME_DESIGN.md`.
 
+## Next.js version
+
+`site/` holds the same Planner and game rebuilt as a Next.js app, with a polar site map and a light/dark theme.
+Run it with `cd site && npm install && npm run dev`. See `site/README.md`.
+
 ## Put it online (GitHub Pages)
 
 Copy both pages to the top of the repo, commit and push, then turn on **Settings → Pages → main / (root)**:
