@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /** Size a canvas to its CSS width at device pixel ratio; returns a context in CSS pixels. */
 export function setupCanvas(cv: HTMLCanvasElement, h: number) {
@@ -39,4 +39,27 @@ export function useRedrawSignal() {
     };
   }, []);
   return n;
+}
+
+/** True when the visitor asked for less motion; canvases then draw still frames. */
+export const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** A canvas ref that redraws every frame with the clock in seconds. With reduced motion it draws still frames when `deps` change. */
+export function useAnimCanvas(draw: (cv: HTMLCanvasElement, t: number) => void, deps: unknown[]) {
+  const ref = useRef<HTMLCanvasElement>(null), fn = useRef(draw);
+  const sig = useRedrawSignal();
+  useEffect(() => { fn.current = draw; });
+  useEffect(() => {
+    if (reducedMotion()) return;
+    let raf = requestAnimationFrame(function loop(ts) {
+      if (ref.current) fn.current(ref.current, ts / 1000);
+      raf = requestAnimationFrame(loop);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  useEffect(() => {
+    if (ref.current && reducedMotion()) fn.current(ref.current, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- callers pass the values the drawing reads
+  }, [sig, ...deps]);
+  return ref;
 }

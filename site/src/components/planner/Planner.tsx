@@ -6,7 +6,8 @@ import {
 } from "@/lib/ephemeris";
 import { fmt, fmtD, pct } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
-import { initialSites } from "@/lib/sites";
+import { SITE_SEEDS } from "@/lib/sites";
+import { withTerrain } from "@/lib/terrain";
 import { SectionHead, StatChips } from "@/components/ui";
 import { PolarMap } from "./PolarMap";
 import { SkyPanorama, Timeline, WindowStrip } from "./Charts";
@@ -34,7 +35,8 @@ function initialFromUrl() {
 export function Planner() {
   const { t, raw, lang } = useI18n();
   const [init] = useState(initialFromUrl);
-  const [sites, setSites] = useState<Site[]>(initialSites);
+  // every site starts on its real LOLA skyline where one exists
+  const [sites, setSites] = useState<Site[]>(() => SITE_SEEDS.map(withTerrain));
   const [selId, setSelId] = useState(() => (sites.some((s) => s.id === init.site) ? init.site : "B"));
   const [start, setStart] = useState(init.start);
   const [spanDays, setSpanDays] = useState("60");
@@ -142,8 +144,7 @@ export function Planner() {
                 <button key={s.id} type="button" className="site" aria-pressed={s.id === selId} onClick={() => select(s.id)}>
                   <span className="sw" />
                   <b>{s.name}</b>
-                  {s.model === "terrain" ? <span className="chip terrain">{t("p.hTerrainS")}</span>
-                    : <span className="val">{pct(bothBySite.get(s.id) ?? 0)}%</span>}
+                  <span className="val">{s.model !== "terrain" && <span className="chip" title={t("p2.smoothTip")}>{t("p2.smoothChip")}</span>} {pct(bothBySite.get(s.id) ?? 0)}%</span>
                 </button>
               ))}
             </div>
@@ -297,6 +298,9 @@ function Verdict({ site, k, start, span }: { site: Site; k: Stats; start: number
       </div>
       {k.maxDarkH > 96 && <p className="warn">⚠ {t("p2.warn")}</p>}
       <StatChips k={k} />
+      <p className={`horizon-note${site.model === "terrain" ? " on" : ""}`}>
+        {site.model === "terrain" ? t("p2.terrainOn") : site.model === "raised" ? t("p2.terrainRaised", { h: site.raised }) : t("p2.terrainOff")}
+      </p>
     </section>
   );
 }
@@ -345,7 +349,7 @@ const Compare = memo(function Compare({ rows, selId, onSelect }: { rows: Row[]; 
           <tbody>
             {sorted.map((r) => (
               <tr key={r.s.id} className={r.s.id === selId ? "sel" : ""} onClick={() => onSelect(r.s.id)}>
-                <td>{r.s.name}{r.s.model === "terrain" && <> <span className="chip terrain">{t("p.hTerrainS")}</span></>}</td>
+                <td>{r.s.name}{r.s.model !== "terrain" && <> <span className="chip" title={t("p2.smoothTip")}>{t("p2.smoothChip")}</span></>}</td>
                 <td>{pct(r.sun)}%</td>
                 <td>{dur(r.maxDarkH)}</td>
                 <td>{pct(r.earth)}%</td>

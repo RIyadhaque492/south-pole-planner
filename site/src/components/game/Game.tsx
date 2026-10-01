@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DAY, HOUR, T_MAX, type Series } from "@/lib/ephemeris";
@@ -7,21 +8,28 @@ import {
   CFG, GAME_SITES, SCENARIOS, hourly, newState, panelFactor, starsFor, step,
   type ScnKey, type Scenario, type SimState,
 } from "@/lib/game";
-import { useRedrawSignal } from "@/lib/canvas";
+import { reducedMotion, useAnimCanvas, useRedrawSignal } from "@/lib/canvas";
 import { useI18n } from "@/lib/i18n";
-import { drawCardArt, drawForecast, drawReplay, drawScene } from "./art";
+import { drawForecast, drawReplay, drawScene } from "./art";
+import { Mascot } from "./Mascot";
+import { PoleExplainer } from "./PoleExplainer";
 
 type LogKind = "sun" | "earth" | "bad" | "good";
 interface LogEntry { id: number; kind: LogKind; key: string; vars?: Record<string, number>; i: number }
 interface Mission {
   key: ScnKey; sc: Scenario; o: Series; s: SimState; stars: number[][];
   flags: Record<string, boolean>; log: LogEntry[];
+  /** Progress through the current hour (0..1), for the scene animation. */
+  frac: number;
 }
 type Screen = "pick" | "setup" | "play" | "end";
 
 const KEYS: ScnKey[] = ["vikram", "tipped", "peak"];
 const PEAK_MIN = Date.UTC(2026, 9, 1), PEAK_MAX = Math.min(T_MAX - 20 * DAY, Date.UTC(2027, 11, 31));
 const bestKey = (k: string) => "rts-best-" + k;
+const ICONS: Record<LogKind | "tip", string> = { sun: "☀️", earth: "🌍", bad: "⚠️", good: "✅", tip: "💡" };
+const TOGGLE_ICONS = { sci: "🔬", rad: "📡", hib: "😴" };
+const HOWTO_ICONS = ["🔬", "📡", "😴", "📅"];
 const fmtHour = (ms: number) => { const d = new Date(ms); return `${fmtD(ms)} ${pad(d.getUTCHours())}:00 UTC`; };
 
 function useCanvas(draw: (cv: HTMLCanvasElement) => void, deps: unknown[]) {
@@ -34,16 +42,13 @@ function useCanvas(draw: (cv: HTMLCanvasElement) => void, deps: unknown[]) {
   return ref;
 }
 
-function CardArt({ kind }: { kind: "night" | "tipped" | "peak" }) {
-  const ref = useCanvas((cv) => drawCardArt(cv, kind), [kind]);
-  return <canvas ref={ref} className="art" aria-hidden="true" />;
-}
-
 export function Game() {
   const { t, raw, lang } = useI18n();
   const [screen, setScreen] = useState<Screen>("pick");
   const [frame, setFrame] = useState(0);
   const [speed, setSpeed] = useState(0);
+  const [intro, setIntro] = useState(false);
+  const introTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [autoPause, setAutoPause] = useState(true);
   const [pSite, setPSite] = useState("B");
   const [pDate, setPDate] = useState(fmtD(Date.UTC(2026, 9, 15)));
@@ -106,7 +111,7 @@ export function Game() {
 
   useEffect(() => {
     if (!speed || screen !== "play") return;
-    let raf = 0, last = 0, acc = 0;
+    let raf = 0, last = 0, acc = m.current!.frac;
     const loop = (ts: number) => {
       const M = m.current!;
       const dt = last ? Math.min(100, ts - last) : 16;
@@ -116,6 +121,7 @@ export function Game() {
         acc -= 1; step(M.sc, M.o, M.s);
         if (checkEvents(M)) { paused = true; break; }
       }
+      M.frac = paused || M.s.dead || M.s.done ? 0 : Math.min(1, acc);
       rerender();
       if (M.s.dead || M.s.done) return finish();
       if (paused) return setSpeed(0);
@@ -131,13 +137,18 @@ export function Game() {
     const o = hourly(sc.site, sc.land, sc.hours + 130);
     let seed = 7;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    const M: Mission = { key, sc, o, s: newState(sc), stars: Array.from({ length: 160 }, () => [rnd(), rnd(), rnd()]), flags: {}, log: [] };
+    const M: Mission = { key, sc, o, s: newState(sc), stars: Array.from({ length: 160 }, () => [rnd(), rnd(), rnd()]), flags: {}, log: [], frac: 0 };
     log(M, "good", "g.ev.land");
     m.current = M;
     setMission(M);
     setSpeed(0); setScreen("play"); rerender();
-    setTimeout(() => setSpeed(3), 400);
+    // The clock starts once the lander has touched down.
+    setIntro(true);
+    clearTimeout(introTimer.current);
+    introTimer.current = setTimeout(() => { setIntro(false); setSpeed(3); }, reducedMotion() ? 400 : 1900);
   };
+  const quit = () => { clearTimeout(introTimer.current); setIntro(false); setSpeed(0); setScreen("pick"); };
+  useEffect(() => () => clearTimeout(introTimer.current), []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -167,7 +178,7 @@ export function Game() {
               const d = SCENARIOS[k];
               return (
                 <button key={k} type="button" className="card" onClick={() => (d.needsSetup ? setScreen("setup") : startMission(k))}>
-                  <CardArt kind={d.icon} />
+                  <Image className="art" src={`/img/card-${d.icon}.jpg`} alt="" width={1200} height={400} loading="eager" sizes="(max-width: 900px) 100vw, 440px" />
                   <div className="body">
                     <span className={`tag ${d.diff}`}>{t(`g.scn.${k}.d`)}</span>
                     <h3>{t(`g.scn.${k}.t`)}</h3>
@@ -184,9 +195,11 @@ export function Game() {
           </div>
           <div className="howto">
             {raw<string[][]>("g.howto").map(([a, b], k) => (
-              <div key={a}><span className="eyebrow"><span className="num">0{k + 1}</span>{a}</span><p>{b}</p></div>
+              <div key={a}><span className="ico" aria-hidden="true">{HOWTO_ICONS[k]}</span><span className="eyebrow">{a}</span><p>{b}</p></div>
             ))}
           </div>
+          <PoleExplainer />
+          <p className="hint ai-note">{t("g2.aiNote")}</p>
         </section>
       )}
 
@@ -205,7 +218,7 @@ export function Game() {
             else s.rad = !s.rad;
             rerender();
           }}
-          onAbort={() => { setSpeed(0); setScreen("pick"); }} />
+          intro={intro} onAbort={quit} />
       )}
 
       {screen === "end" && mission && (
@@ -264,20 +277,25 @@ function Toggle({ id, on, label, sub, dis, hib, onToggle }: {
   const { t } = useI18n();
   return (
     <button type="button" className={`toggle${hib ? " hib" : ""}`} aria-pressed={on} disabled={dis} onClick={() => onToggle(id)}>
-      <b>{label}</b><span className="sw">{on ? t("g.on") : t("g.off")}</span><small>{sub}</small>
+      <span className="ico" aria-hidden="true">{TOGGLE_ICONS[id]}</span><b>{label}</b><span className="sw">{on ? t("g.on") : t("g.off")}</span><small>{sub}</small>
     </button>
   );
 }
 
-function PlayScreen({ M, frame, speed, setSpeed, autoPause, setAutoPause, goal, onToggle, onAbort }: {
+function PlayScreen({ M, frame, speed, setSpeed, autoPause, setAutoPause, goal, intro, onToggle, onAbort }: {
   M: Mission; frame: number; speed: number; setSpeed: (v: number) => void; autoPause: boolean; setAutoPause: (v: boolean) => void;
-  goal: string; onToggle: (w: "sci" | "rad" | "hib") => void; onAbort: () => void;
+  goal: string; intro: boolean; onToggle: (w: "sci" | "rad" | "hib") => void; onAbort: () => void;
 }) {
   const { t, lang } = useI18n();
   const { sc, o, s } = M;
-  const scene = useCanvas((cv) => drawScene(cv, sc, o, s, M.stars, {
-    sun: t("sun"), earth: t("earth"), exag: (k) => t("g.exag", { k }), panel: t("g.panel"),
-  }), [frame, lang]);
+  // Clock time of the first frame of this mission, so the lander flies in once.
+  const born = useRef({ M, at: 0 });
+  const scene = useAnimCanvas((cv, now) => {
+    if (born.current.M !== M || !born.current.at) born.current = { M, at: now };
+    drawScene(cv, sc, o, s, M.stars, {
+      sun: t("sun"), earth: t("earth"), exag: (k) => t("g.exag", { k }), panel: t("g.panel"),
+    }, { t: now, frac: M.frac, age: now ? now - born.current.at : 99 });
+  }, [frame, lang]);
   const fc = useCanvas((cv) => {
     const i = s.i, clamp = (j: number) => Math.min(o.n - 1, j);
     drawForecast(cv, [
@@ -289,6 +307,13 @@ function PlayScreen({ M, frame, speed, setSpeed, autoPause, setAutoPause, goal, 
   const b = s.bat / CFG.batteryWh, day = Math.floor(s.i / 24) + 1;
   const i = Math.min(s.i, o.n - 1), eUp = o.eEl[i] >= 0;
   const batCol = b > 0.5 ? "var(--both)" : b > 0.25 ? "var(--sun)" : "var(--warn)";
+  // The lander talks: an alert when the game pauses on one, otherwise a hint for what to do next.
+  const paused = speed === 0 && !intro && !s.dead && !s.done;
+  const alert = paused && s.i > 0 && M.log[0]?.i === s.i ? M.log[0] : null;
+  const dark = o.sFrac[i] < 0.5, full = s.stored >= CFG.storageMB;
+  const tip = s.dead ? "frozen" : s.hib ? (CFG.solarW * o.sFrac[i] * panelFactor(sc, o, i) > 120 ? "wake" : "sleep")
+    : b < 0.25 ? "low" : dark ? "dark" : eUp && s.stored > 0 && !s.rad ? "radio" : full && s.sci && !eUp ? "full"
+    : !s.sci && b > 0.5 ? "sci" : s.sending ? "send" : "ok";
   return (
     <section>
       <div className="goalbar">
@@ -299,6 +324,11 @@ function PlayScreen({ M, frame, speed, setSpeed, autoPause, setAutoPause, goal, 
         <div className="stack">
           <div className="panel scene">
             <canvas ref={scene} aria-label="View from the lander: sky, Sun, Earth and horizon" />
+            <div className={`bubble ${alert ? alert.kind : "tip"}`} key={alert ? alert.id : tip}>
+              <span className="ico" aria-hidden="true">{ICONS[alert ? alert.kind : "tip"]}</span>
+              <span className="txt">{alert ? t(alert.key, alert.vars) : t(`g2.tip.${tip}`)}</span>
+              {paused && <button type="button" className="btn accent" onClick={() => setSpeed(3)}>▶ {t("g2.go")}</button>}
+            </div>
             <div className="hud">
               <div><div className="k">{t("g.battery")}</div><div className="v">{Math.round(b * 100)}<small>%</small></div>
                 <div className="meter"><i style={{ width: `${b * 100}%`, background: batCol }} /></div><div className="n">{Math.round(s.bat)} / {CFG.batteryWh} Wh</div></div>
@@ -328,8 +358,8 @@ function PlayScreen({ M, frame, speed, setSpeed, autoPause, setAutoPause, goal, 
               <span>{t("g.flowOut")}</span><span className="out">−{Math.round(s.loadW)} W</span>
             </div>
             <div className="speed" role="group" aria-label="Speed">
-              {[[0, "II"], [3, "1×"], [8, "2×"], [20, "4×"]].map(([v, l]) => (
-                <button key={v} type="button" aria-pressed={speed === v} aria-label={v === 0 ? t("g.pauseLbl") : undefined} onClick={() => setSpeed(+v)}>{l}</button>
+              {([[0, "II", t("g.pauseLbl")], [3, "▶", "1×"], [8, "▶▶", "2×"], [20, "▶▶▶", "4×"]] as const).map(([v, l, name]) => (
+                <button key={v} type="button" aria-pressed={speed === v} aria-label={name} title={name} onClick={() => setSpeed(v)}>{l}</button>
               ))}
             </div>
             <label className="chk"><input type="checkbox" checked={autoPause} onChange={(e) => setAutoPause(e.target.checked)} /> {t("g.autoPause")}</label>
@@ -381,6 +411,7 @@ function Debrief({ M, lang, onAgain, onPick }: { M: Mission; lang: string; onAga
   return (
     <section className="panel debrief" lang={lang}>
       <div>
+        <Mascot mood={s.dead ? "dead" : win ? "happy" : "awake"} height={130} />
         <div className="eyebrow">{t(`g.scn.${key}.t`)} · {sc.site.name} · {fmtD(sc.land)}</div>
         <div className={`result ${s.dead ? "lose" : win ? "win" : ""}`}>{s.dead ? t("g.lose") : win ? t("g.win") : t("g.done")}</div>
         <div className="stars" aria-label={`${n} / 3`}>{[0, 1, 2].map((k) => <span key={k} className={k < n ? "" : "off"}>★</span>)}</div>

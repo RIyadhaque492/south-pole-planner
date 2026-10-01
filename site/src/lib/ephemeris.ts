@@ -46,13 +46,13 @@ function geom(ms: number, out: Float64Array) {
   return out;
 }
 
-/** Selenographic longitude and latitude (degrees) of the sub-solar and sub-Earth points at a moment. */
+/** Selenographic longitude and latitude (degrees) of the sub-solar and sub-Earth points, and Earth's distance (km), at a moment. */
 export function subLongitudes(ms: number) {
   const g = geom(ms, new Float64Array(6));
   const en = Math.hypot(g[3], g[4], g[5]);
   return {
     sun: Math.atan2(g[1], g[0]) / D, sunLat: Math.asin(g[2]) / D,
-    earth: Math.atan2(g[4], g[3]) / D, earthLat: Math.asin(g[5] / en) / D,
+    earth: Math.atan2(g[4], g[3]) / D, earthLat: Math.asin(g[5] / en) / D, earthKm: en,
   };
 }
 

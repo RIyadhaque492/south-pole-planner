@@ -121,7 +121,9 @@ export function Timeline({ o, start, span, mask, t: tm, onSeek }: {
     c.fillStyle = css("--regolith"); c.globalAlpha = 0.4; c.fillRect(L, Y(0), pw, Y(lo) - Y(0)); c.globalAlpha = 1;
     c.strokeStyle = css("--regolith-edge"); c.beginPath(); c.moveTo(L, Y(0) + 0.5); c.lineTo(L + pw, Y(0) + 0.5); c.stroke();
 
-    const days = span / DAY, tickD = days <= 16 ? 2 : days <= 32 ? 5 : days <= 70 ? 10 : days <= 200 ? 30 : 60;
+    // pick the smallest day step that leaves room for a "Mon 12" label (~52 px) at this chart width
+    const days = span / DAY, pxPerDay = pw / days;
+    const tickD = [1, 2, 5, 10, 15, 30, 60, 90, 120].find((d) => d * pxPerDay >= 52) ?? 180;
     c.textAlign = "center"; c.textBaseline = "top"; c.fillStyle = css("--faint");
     const bandTop = T + ph + 24;
     for (let d = 0; d <= days; d += tickD) {

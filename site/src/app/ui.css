@@ -79,7 +79,9 @@ a.ll-row:hover { background: var(--bg-2); }
 .how3 li { display: flex; gap: 14px; align-items: flex-start; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
 .how3 b { display: block; font-size: 15.5px; }
 .how3 p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
-.game-band { grid-template-columns: minmax(0, 1fr) auto; padding: 36px 40px; }
+.game-band { grid-template-columns: 220px minmax(0, 1fr) auto; padding: 36px 40px; }
+.game-mascot { display: block; border-radius: 14px; overflow: hidden; transition: transform 0.2s; }
+.game-mascot:hover { transform: translateY(-3px) rotate(-1deg); }
 .game-band p { margin: 8px 0 0; }
 .foot a { color: inherit; }
 
@@ -134,3 +136,35 @@ a.ll-row:hover { background: var(--bg-2); }
 .photo figcaption h3 { font: 600 1.35rem/1.25 var(--display); letter-spacing: -0.02em; margin: 0 0 10px; }
 .photo figcaption p { margin: 0 0 14px; color: var(--muted); font-size: 15px; line-height: 1.65; max-width: 56ch; }
 .photo figcaption small { font-size: 12px; color: var(--faint); }
+
+/* ---------- phones ---------- */
+.shead > :last-child { min-width: 0; }
+.verdict .where { overflow-wrap: anywhere; }
+@media (max-width: 700px) {
+  .game-band { grid-template-columns: minmax(0, 1fr); padding: 26px 22px; }
+  .game-band .btn { justify-self: start; }
+}
+@media (max-width: 640px) {
+  /* hero map: move the readouts below the disc instead of over its edge labels */
+  .terrain { aspect-ratio: auto; }
+  .terrain canvas { height: auto; aspect-ratio: 1; }
+  .terrain-hud { position: static; flex-direction: row; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .readouts { position: static; flex-direction: row; flex-wrap: wrap; }
+  .terrain-note { position: static; margin-top: 10px; }
+  /* why-it's-hard scene: controls and message sit outside the picture */
+  .story-stage { display: flex; flex-direction: column; }
+  .story-stage canvas { order: 1; height: 300px; }
+  .story-top { position: static; order: 0; padding: 12px; background: #05070a; }
+  .story-msg { position: static; order: 2; transform: none; max-width: none; border-radius: 0; border: 0; border-top: 1px solid #1c232c; }
+  .story-tally { flex-direction: column; align-items: stretch; }
+  .tally { justify-content: space-between; }
+}
+
+/* which horizon the numbers use */
+.horizon-note { margin: 14px 0 0; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.horizon-note::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--faint); }
+.horizon-note.on::before { background: var(--both); }
+.sites .val .chip { font-size: 10px; padding: 2px 5px; margin-right: 4px; }
+
+.coords-note { margin: 8px 0 0; font-size: 13px; color: var(--muted); max-width: 52ch; }
+.verdict .where { white-space: normal; text-align: left; }

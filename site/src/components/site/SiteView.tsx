@@ -22,7 +22,8 @@ export function SiteView({ site, now, month, year, others }: {
           <div className="site-hero-grid">
             <div>
               <h1>{site.name}</h1>
-              <p className="mono coords">{latlon(site)}</p>
+              <p className="mono coords">{latlon(now)}</p>
+              <p className="coords-note">{now.terrain ? (now.movedM ? t("s2.movedNote", { m: now.movedM }) : t("p2.terrainOn")) : t("p2.terrainOff")}</p>
               <div className="cta-row">
                 <Link href={`/planner?site=${site.id}`} className="btn accent lg">{t("s.open")} →</Link>
               </div>

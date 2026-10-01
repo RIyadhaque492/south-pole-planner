@@ -8,6 +8,7 @@ import { TerrainHero } from "./TerrainHero";
 import { LiveBoard } from "./LiveBoard";
 import { HorizonStory } from "./HorizonStory";
 import { Reveal } from "./bits";
+import { Mascot } from "@/components/game/Mascot";
 
 export function Landing({ now, live }: { now: number; live: { t: number; sites: SkyNow[] } }) {
   const { t } = useI18n();
@@ -72,6 +73,7 @@ export function Landing({ now, live }: { now: number; live: { t: number; sites: 
         <Reveal>
           <section className="band game-band space">
             <div className="starfield" aria-hidden="true" />
+            <Link href="/game" className="game-mascot" aria-label={t("g2.bandHi")} title={t("g2.bandHi")}><Mascot mood="awake" height={120} /></Link>
             <div>
               <h2 className="shead-t">{t("l2.gameT")}</h2>
               <p>{t("l2.gameD")}</p>

@@ -140,7 +140,8 @@ function drawScene(canvas: HTMLCanvasElement, o: Series, hour: number, place: Pl
   const lerpAz = (a: Float32Array) => (a[i0] + wrap(a[i1] - a[i0]) * f + 360) % 360;
   const sEl = lerp(o.sEl), sAz = lerpAz(o.sAz), eEl = lerp(o.eEl), eAz = lerpAz(o.eAz);
   // keep the Sun and Earth both on screen: centre the view between them
-  const mid = (eAz + wrap(sAz - eAz) / 2 + 360) % 360, span = 300;
+  // phones get a narrower view so the Sun, Earth and lander stay large enough to read
+  const mid = (eAz + wrap(sAz - eAz) / 2 + 360) % 360, span = w < 640 ? 200 : 300, small = w < 640;
   const X = (az: number) => w / 2 + (wrap(az - mid) / span) * w, Y = (el: number) => y0 - el * EXAG;
   const sunVis = diskFrac((sEl - hz(sAz)) / SUN_R), earthVis = eEl > hz(eAz);
   const sx = X(sAz), sy = Y(sEl), ex = X(eAz), ey = Y(eEl);
@@ -220,12 +221,12 @@ function drawScene(canvas: HTMLCanvasElement, o: Series, hour: number, place: Pl
     sh.addColorStop(0, `rgba(0,0,0,${0.55 * lit})`); sh.addColorStop(1, "rgba(0,0,0,0)");
     c.fillStyle = sh; c.beginPath(); c.moveTo(lx - 34, ly); c.lineTo(lx - dir * len, ly - 4); c.lineTo(lx - dir * len, ly + 6); c.lineTo(lx + 34, ly + 4); c.closePath(); c.fill();
   }
-  const antX = lx + 12 * 1.9, antY = ly - 58 * 1.9;
+  const ls = small ? 1.25 : 1.9, antX = lx + 12 * ls, antY = ly - 58 * ls;
   if (earthVis) {
     c.strokeStyle = "rgba(110,167,242,.85)"; c.lineWidth = 1.6; c.setLineDash([5, 7]); c.lineDashOffset = -hour * 40;
     c.beginPath(); c.moveTo(antX, antY); c.lineTo(ex, ey); c.stroke(); c.setLineDash([]);
   }
-  drawLander(c, lx, ly, 1.9, lit, earthVis ? Math.atan2(ey - antY, ex - antX) : -1.9, dir);
+  drawLander(c, lx, ly, small ? 1.25 : 1.9, lit, earthVis ? Math.atan2(ey - antY, ex - antX) : -1.9, dir);
 
   // tags on the sky objects
   c.font = `600 12px ${sans}`; c.textBaseline = "bottom";

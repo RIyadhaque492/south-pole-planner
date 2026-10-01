@@ -1,0 +1,3 @@
+# Python caches from the ephemeris/terrain scripts
+__pycache__/
+*.pyc

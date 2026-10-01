@@ -1,6 +1,6 @@
 import type { Site } from "./ephemeris";
 
-type SiteSeed = Pick<Site, "id" | "name" | "lat" | "lon" | "pub">;
+export type SiteSeed = Pick<Site, "id" | "name" | "lat" | "lon" | "pub">;
 
 /* Candidate sites from published south-pole illumination studies (coordinates approximate). */
 export const SITE_SEEDS: SiteSeed[] = [
