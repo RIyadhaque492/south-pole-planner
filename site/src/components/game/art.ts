@@ -176,6 +176,79 @@ export function drawMascot(cv: HTMLCanvasElement, mood: Mood, t = 0, height = 15
   }
 }
 
+export type SkyView = { sunEl: number; sunAz: number; earthEl: number; earthAz: number; power: boolean; link: boolean; center: number };
+export type SkyLabels = { sun: string; earth: string; exag: (k: number) => string; below: string; hill: string };
+const SKY_STARS = (() => { const rnd = seeded(53); return Array.from({ length: 90 }, () => [rnd(), rnd(), rnd()]); })();
+
+/** One site's sky at one moment, for the landing page: where the Sun and Earth are, and whether the lander can use them. */
+export function drawSkyNow(cv: HTMLCanvasElement, v: SkyView, L: SkyLabels, t = 0) {
+  const { c, w, h } = setupCanvas(cv, 280);
+  const y0 = h * 0.6, k = Math.min(11, (y0 - 30) / 8); // pixels per degree of elevation
+  const X = (az: number) => ((((az - v.center + 540) % 360) - 180) / 360) * w + w / 2, Y = (el: number) => y0 - el * k;
+  const mono = css("--mono"), body = css("--sans"), lit = v.power ? 1 : 0;
+  c.fillStyle = "#05070a"; c.fillRect(0, 0, w, h);
+  drawStars(c, SKY_STARS, w, y0, t, 1 - 0.4 * lit);
+  const sx = X(v.sunAz), sy = Y(v.sunEl), ex = X(v.earthAz), ey = Y(v.earthEl);
+  const cosSep = Math.sin(v.sunEl * D) * Math.sin(v.earthEl * D) + Math.cos(v.sunEl * D) * Math.cos(v.earthEl * D) * Math.cos((v.sunAz - v.earthAz) * D);
+  drawEarth(c, ex, ey, 14, Math.atan2(sy - ey, sx - ex), (1 - cosSep) / 2, t);
+  drawSun(c, sx, sy, 11, t);
+  // a hill on the skyline when the real terrain hides something that a flat Moon would show
+  const hill = (x: number, top: number) => {
+    c.fillStyle = "#15181d"; c.beginPath(); c.moveTo(x - 110, y0 + 1);
+    c.bezierCurveTo(x - 50, y0, x - 40, top - 16, x, top - 18); c.bezierCurveTo(x + 44, top - 14, x + 60, y0, x + 120, y0 + 1); c.fill();
+  };
+  const sunHidden = !v.power && v.sunEl > 0.4, earthHidden = !v.link && v.earthEl > 0.4;
+  if (sunHidden) hill(sx, sy);
+  if (earthHidden) hill(ex, ey);
+  const mix = (p: number[], q: number[], f: number) => p.map((n, j) => Math.round(n + (q[j] - n) * f));
+  const gg = c.createLinearGradient(0, y0, 0, h);
+  gg.addColorStop(0, `rgb(${mix([22, 25, 31], [92, 87, 77], lit)})`); gg.addColorStop(1, `rgb(${mix([14, 16, 20], [56, 53, 47], lit)})`);
+  c.fillStyle = gg; c.fillRect(0, y0, w, h - y0);
+  c.strokeStyle = lit ? "rgba(255,220,160,.55)" : "rgba(160,180,210,.25)"; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(0, y0 + 0.5); c.lineTo(w, y0 + 0.5); c.stroke();
+  // ghosts under the ground show where the Sun or Earth is when it is below the horizon
+  c.setLineDash([3, 4]); c.lineWidth = 1.5;
+  if (sy > y0 + 6) { c.strokeStyle = "rgba(242,169,59,.6)"; c.beginPath(); c.arc(sx, Math.min(sy, h - 16), 9, 0, TAU); c.stroke(); }
+  if (ey > y0 + 6) { c.strokeStyle = "rgba(110,167,242,.7)"; c.beginPath(); c.arc(ex, Math.min(ey, h - 16), 11, 0, TAU); c.stroke(); }
+  c.setLineDash([]);
+  c.font = `11px ${mono}`; c.fillStyle = "rgba(200,210,220,.5)"; c.textAlign = "center"; c.textBaseline = "top";
+  ([["N", 0], ["E", 90], ["S", 180], ["W", 270]] as const).forEach(([l, az]) => { const x = X(az); if (x > 8 && x < w - 8) c.fillText(l, x, y0 + 4); });
+  const tag = (x: number, y: number, text: string, col: string) => {
+    c.font = `600 12.5px ${body}`; c.textBaseline = "middle";
+    const left = x + 22 + c.measureText(text).width > w; // flip to the left near the right edge
+    c.textAlign = left ? "right" : "left"; c.fillStyle = col; c.fillText(text, x + (left ? -20 : 20), y);
+  };
+  // anything below the horizon is named in a bottom corner, clear of the lander
+  const corner = (text: string, col: string, right: boolean) => {
+    c.font = `600 11.5px ${body}`; c.textBaseline = "bottom"; c.textAlign = right ? "right" : "left"; c.fillStyle = col;
+    c.fillText(text, right ? w - 10 : 10, h - 8);
+  };
+  if (sy > y0 + 6) corner(`${L.sun}: ${L.below}`, SUN, false); else tag(sx, sy - 14, sunHidden ? `${L.sun}: ${L.hill}` : L.sun, SUN);
+  if (ey > y0 + 6) corner(`${L.earth}: ${L.below}`, EARTH, true); else tag(ex, ey - 16, earthHidden ? `${L.earth}: ${L.hill}` : L.earth, EARTH);
+  c.font = `11px ${mono}`; c.fillStyle = "rgba(200,210,220,.45)"; c.textAlign = "right"; c.textBaseline = "top";
+  c.fillText(L.exag(Math.max(1, Math.round(k / (w / 360)))), w - 12, 10);
+  // the lander shows what the sky means for it
+  const S = 1.5, lx = w / 2, gy = h - 22, away = sx < lx ? 1 : -1;
+  if (v.power) {
+    const sg = c.createLinearGradient(lx, 0, lx + away * 200, 0);
+    sg.addColorStop(0, "rgba(0,0,0,.45)"); sg.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = sg; c.beginPath(); c.moveTo(lx - 26, gy); c.lineTo(lx + 26, gy + 4); c.lineTo(lx + away * 200, gy + 14); c.lineTo(lx + away * 200, gy + 4); c.fill();
+  }
+  c.fillStyle = "rgba(0,0,0,.4)"; c.beginPath(); c.ellipse(lx, gy + 2, 36, 4, 0, 0, TAU); c.fill();
+  const dish = landerPoint(lx, gy, S, 0, 9, -31), head = landerPoint(lx, gy, S, 0, 0, -24);
+  const target = v.power ? [sx, sy] : v.link ? [ex, ey] : [lx, head[1] - 50], ld = Math.hypot(target[0] - head[0], target[1] - head[1]) || 1;
+  if (v.power) flow(c, [sx, sy], landerPoint(lx, gy, S, 0, -25, -36), 7, t, 0.35, "rgba(255,217,138,.75)", 2);
+  drawLander(c, lx, gy, S, {
+    t, charge: lit, antAng: Math.atan2(ey - dish[1], ex - dish[0]), frost: !v.power,
+    mood: v.power && v.link ? "happy" : v.power ? "awake" : v.link ? "worry" : "sleep",
+    look: [(target[0] - head[0]) / ld, (target[1] - head[1]) / ld],
+  });
+  if (v.link) {
+    c.strokeStyle = "rgba(110,167,242,.35)"; c.lineWidth = 1; c.beginPath(); c.moveTo(dish[0], dish[1]); c.lineTo(ex, ey); c.stroke();
+    flow(c, dish, [ex, ey], 6, t, 0.5, "#a9cbff", 2.4);
+  }
+}
+
 export type Labels = { sun: string; earth: string; exag: (k: number) => string; panel: string };
 /** `t` is the clock in seconds, `frac` how far into the current hour the simulation is, `age` seconds since touchdown began. */
 export type Anim = { t: number; frac: number; age: number };

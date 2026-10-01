@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
-import type { SkyNow } from "@/lib/sky";
+import type { Board } from "@/lib/sky";
 import { SectionHead } from "@/components/ui";
 import { TerrainHero } from "./TerrainHero";
 import { LiveBoard } from "./LiveBoard";
@@ -10,7 +10,7 @@ import { HorizonStory } from "./HorizonStory";
 import { Reveal } from "./bits";
 import { Mascot } from "@/components/game/Mascot";
 
-export function Landing({ now, live }: { now: number; live: { t: number; sites: SkyNow[] } }) {
+export function Landing({ now, board }: { now: number; board: Board }) {
   const { t } = useI18n();
   return (
     <main>
@@ -33,7 +33,7 @@ export function Landing({ now, live }: { now: number; live: { t: number; sites: 
 
       <div className="wrap">
         {/* ---------- 1. live status ---------- */}
-        <Reveal><section className="band"><LiveBoard initial={live} /></section></Reveal>
+        <Reveal><section className="band"><LiveBoard board={board} /></section></Reveal>
 
         {/* ---------- 2. why it's hard: a scene you can play with, then the real thing ---------- */}
         <section className="band">
