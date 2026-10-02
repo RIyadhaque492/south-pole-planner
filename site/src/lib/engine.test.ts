@@ -4,7 +4,8 @@ import path from "node:path";
 import vm from "node:vm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { DAY, HOUR, T_MAX, T_MIN, series, setGeometry, stats, subLongitudes, type Series } from "./ephemeris";
-import { SCENARIOS, simulate } from "./game";
+import { SCENARIOS, dayKey, simulate } from "./game";
+import { MISSIONS, replay } from "./missions";
 import { SITE_SEEDS, makeSite, seedById } from "./sites";
 import { setTerrain, withTerrain, type TerrainBundle } from "./terrain";
 
@@ -105,5 +106,42 @@ describe("Race the Shadow balance (GAME_DESIGN.md)", () => {
     const r = simulate(SCENARIOS.vikram.build(), () => {});
     expect(r.s.dead).toBe(true);
     expect(r.s.i).toBe(395);
+  });
+});
+
+describe("real CLPS landings", () => {
+  const at = (id: string) => replay(MISSIONS.find((m) => m.id === id)!);
+  const utc = (...a: [number, number, number, number, number]) => Date.UTC(...a);
+
+  it("Blue Ghost: lands just after sunrise and loses the Sun on the evening of its last contact", () => {
+    const r = at("bg1");
+    expect(Math.abs(r.sunrise! - utc(2025, 2, 2, 1, 34))).toBeLessThan(30 * 60e3);
+    expect(Math.abs(r.sunset! - utc(2025, 2, 16, 20, 14))).toBeLessThan(30 * 60e3);
+    expect(r.m.end - r.sunset!).toBeGreaterThan(0);
+    expect(r.m.end - r.sunset!).toBeLessThan(6 * HOUR);
+  });
+
+  it("Blue Ghost: the Sun passes fully behind Earth on 14 March 2025", () => {
+    const [a, b] = at("bg1").eclipse!;
+    expect(Math.abs(a - utc(2025, 2, 14, 6, 18))).toBeLessThan(20 * 60e3);
+    expect(Math.abs(b - utc(2025, 2, 14, 8, 34))).toBeLessThan(20 * 60e3);
+  });
+
+  it("IM-1 and IM-2: the Sun is up but low at touchdown", () => {
+    expect(at("im1").sunAtLanding).toBeCloseTo(10.5, 0);
+    expect(at("im2").sunAtLanding).toBeCloseTo(2.5, 0);
+    expect(at("im1").eclipse).toBeNull();
+    expect(at("im2").eclipse).toBeNull(); // the March 2025 eclipse came a week after Athena went silent
+  });
+});
+
+describe("daily challenge", () => {
+  it("is the same mission all day and changes the next day", () => {
+    const noon = Date.UTC(2026, 9, 2, 12), a = SCENARIOS.daily.build(undefined, noon), b = SCENARIOS.daily.build(undefined, noon + 6 * HOUR);
+    expect(a.day).toBe(dayKey(noon));
+    expect([b.site.id, b.land, b.stars]).toEqual([a.site.id, a.land, a.stars]);
+    const week = Array.from({ length: 7 }, (_, k) => SCENARIOS.daily.build(undefined, noon + k * DAY));
+    expect(new Set(week.map((s) => s.site.id + s.land)).size).toBeGreaterThan(3);
+    for (const s of week) expect(s.stars[2]).toBeGreaterThanOrEqual(s.stars[0]);
   });
 });

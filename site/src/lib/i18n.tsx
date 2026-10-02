@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { DICT, type Lang } from "./dict";
+import { DICT, LANGS, type Lang } from "./dict";
 
 const KEY = "spwp-lang";
 
@@ -26,8 +26,9 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
+      const saved = localStorage.getItem(KEY) as Lang | null;
       // eslint-disable-next-line react-hooks/set-state-in-effect -- saved preference only exists on the client
-      if (localStorage.getItem(KEY) === "bn") setLangState("bn");
+      if (saved && saved !== "en" && LANGS.includes(saved)) setLangState(saved);
     } catch {}
   }, []);
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);

@@ -1,8 +1,10 @@
-/* All UI words, English and Bengali. Strings may contain {placeholders}; some contain trusted inline HTML. */
+/* All UI words, English and Bengali (Spanish is in dict-es.ts). Strings may contain {placeholders}; some contain trusted inline HTML. */
+
+import { es } from "./dict-es";
 
 const en = {
   brand: "South Pole Window",
-  nav: { home: "Overview", planner: "Planner", game: "Race the Shadow" },
+  nav: { home: "Overview", planner: "Planner", game: "Race the Shadow", missions: "Missions" },
   theme: { toLight: "Switch to light theme", toDark: "Switch to dark theme" },
   loading: "Loading the JPL ephemeris…",
   loadFail: "Couldn't load the sky data. Reload the page to try again.",
@@ -88,6 +90,43 @@ const en = {
     gameT: "Learn by playing", gameD: "Keep a lander alive through the lunar night, on the same real sky data.",
     api: "Developers: JSON API",
   },
+  p3: {
+    share: "Copy link to this plan", copied: "Link copied", print: "Print or save as PDF",
+    briefT: "Landing brief", briefMission: "{n}-day mission",
+  },
+  m: {
+    title: "Real Moon landings, replayed",
+    intro: "Three CLPS landers have reached the Moon so far. This is the sky each one saw, computed by the same engine as the Planner, next to what really happened.",
+    pick: "Missions",
+    landed: "Landed", lastContact: "Last contact", toLanding: "Back to landing", slider: "Time through the mission",
+    skyAlt: "The sky from the {name} landing site",
+    stBefore: "Not landed yet", stOver: "Mission over",
+    checkT: "What the model computes", checkH: "From the JPL table, for the real landing place and time. Green notes compare it with what the mission reported.",
+    fSun: "Sun at touchdown", fEarth: "Earth at touchdown", fSunrise: "Sunrise before landing", fSunset: "Sunset after landing", fEclipse: "Sun fully behind Earth",
+    above: "{x}° above the horizon",
+    afterSunrise: "Touchdown came {d} after sunrise",
+    endAfter: "Last contact came {d} after this sunset", endBefore: "The mission ended {d} before this sunset",
+    eclipseNote: "Blue Ghost photographed this eclipse from the surface",
+    showsT: "What the replay shows",
+    smooth: "These three sites are computed on a smooth Moon: their local hills and craters are not in the model.",
+    src: "Landing times, places and outcomes are from NASA and the mission teams\u2019 public reports.",
+    open: "Open this place in the Planner",
+    im1: {
+      tag: "Landed, leaning",
+      what: "Odysseus made the first US soft landing on the Moon since Apollo 17 in 1972, and the first by a private company. A leg broke at touchdown and it came to rest leaning about 30°. It worked for about a week.",
+      shows: "At touchdown the Sun was {sun}° up and Earth {earth}° up, so this spot had both power and a radio link. The model puts sunset several days after the mission ended: leaning over, Odysseus lost light on its solar panels before the Sun actually set.",
+    },
+    bg1: {
+      tag: "Full success",
+      what: "Blue Ghost made the first fully successful commercial Moon landing. It worked through a whole lunar day, about 14 Earth days, and for a few hours into the night.",
+      shows: "The model has the Sun rising at the site a few hours before touchdown and setting on the evening of 16 March 2025, the same evening Blue Ghost sent its last data. It also shows the Sun slipping fully behind Earth on 14 March, which is the eclipse Blue Ghost photographed.",
+    },
+    im2: {
+      tag: "Landed on its side",
+      what: "Athena landed closer to the south pole than any lander before it, about 250 m from its target on Mons Mouton. It came to rest on its side inside a small crater, could not recharge, and the mission ended the next day.",
+      shows: "At touchdown the Sun was only {sun}° above the horizon. That low, a crater wall is enough to put a lander in shadow, and on its side in a crater Athena had no way to recharge. This is why the Planner counts every degree of skyline.",
+    },
+  },
   l3: {
     help: "Pick a site to see its sky. Slide the bar to look up to 30 days ahead.",
     count: "of {m} sites can run a lander", now: "right now", at: "in {d}",
@@ -126,6 +165,9 @@ const en = {
       frozen: "Brrr\u2026 the battery ran out.",
     },
     bandHi: "Meet your lander",
+    sndOn: "Sound on", sndOff: "Sound off",
+    share: "Share my score", copied: "Copied",
+    shareText: "Race the Shadow, daily challenge {day}: {mb} MB sent home {stars}",
     aiNote: "The mission pictures, the scene above and the loading picture are AI-generated illustrations, not real photos. Everything the game calculates comes from real NASA JPL data.",
     x: {
       title: "Why is the south pole tricky?", sub: "Tap the numbered dots to find out.",
@@ -215,7 +257,7 @@ const en = {
             ["LOLA", "A laser on NASA's Lunar Reconnaissance Orbiter that mapped the height of the whole Moon."],
             ["CLPS", "Commercial Lunar Payload Services: NASA pays companies to fly science to the Moon on their landers."]],
     howTitle: "How the numbers are calculated",
-    notes: ["<b>Where the Sun and Earth are.</b> From NASA JPL's DE421 ephemeris, including the Moon's wobble (librations), turned into the Moon-fixed frame used by NASA's LOLA maps. Light travel time and the site's offset from the Moon's centre are included. The data covers 2026–2032 at 3-hour steps. The Moon orientation agrees with the independent IAU model to within 15 arcseconds.",
+    notes: ["<b>Where the Sun and Earth are.</b> From NASA JPL's DE421 ephemeris, including the Moon's wobble (librations), turned into the Moon-fixed frame used by NASA's LOLA maps. Light travel time and the site's offset from the Moon's centre are included. The data covers 2024–2032 at 3-hour steps. The Moon orientation agrees with the independent IAU model to within 15 arcseconds.",
             "<b>Power.</b> Counted when at least half of the Sun's disk is above the horizon in the Sun's direction.",
             "<b>Signal.</b> Counted when Earth's centre is above the horizon plus the minimum height set in Advanced settings.",
             "<b>Ground shape.</b> Smooth Moon uses a perfect sphere. Site on a hill lowers the horizon the way it would for a peak above flat plains. Real terrain uses a skyline computed from NASA LOLA elevation maps with the included Python tool. Only real terrain captures shadows from crater rims.",
@@ -231,6 +273,7 @@ const en = {
       vikram: { t: "Vikram's Night", d: "Hard", story: "In 2023, India's Vikram lander touched down near 69°S, did its science, and never woke up after its first lunar night. Your lander has survival heaters. Can it live through the dark?", goal: "Survive the 2-week night and wake up at sunrise." },
       tipped: { t: "Tipped Over", d: "Medium", story: "In 2025, a lander touched down on its side and its solar panels pointed the wrong way. Yours has landed crooked on Malapert Mountain. The panel only catches the Sun from one direction.", goal: "Send {g} MB of science home in 10 days." },
       peak: { t: "Peak of Light", d: "Open", story: "Be the mission planner. Pick a site on the south-pole ridges and a landing date anywhere in the next year, then fly a 14-day mission.", goal: "Send as much science home as you can in 14 days." },
+      daily: { t: "Today\u2019s challenge", d: "Daily", story: "One new mission every day, the same for everyone: ten days, with a site and a date picked by the calendar. Beat your friends\u2019 score.", goal: "Send as much science home as you can in 10 days." },
     },
     best: "Your best: {v}", play: "Play",
     howto: [["Science", "Collects data but uses power."], ["Radio", "Sends data home, only while Earth is up."], ["Hibernate", "Shuts almost everything off to survive the dark."], ["Forecast", "Shows when the Sun and Earth will be up. Plan ahead."]],
@@ -280,11 +323,11 @@ const en = {
   },
 };
 
-type Dict = typeof en;
+export type Dict = typeof en;
 
 const bn: Dict = {
   brand: "দক্ষিণ মেরু উইন্ডো",
-  nav: { home: "সারসংক্ষেপ", planner: "প্ল্যানার", game: "ছায়ার সাথে দৌড়" },
+  nav: { home: "সারসংক্ষেপ", planner: "প্ল্যানার", game: "ছায়ার সাথে দৌড়", missions: "মিশন" },
   theme: { toLight: "হালকা থিমে যাও", toDark: "গাঢ় থিমে যাও" },
   loading: "JPL ephemeris লোড হচ্ছে…",
   loadFail: "আকাশের ডেটা লোড হয়নি। আবার চেষ্টা করতে পেজটা রিলোড করো।",
@@ -370,6 +413,43 @@ const bn: Dict = {
     gameT: "খেলে শেখো", gameD: "একই আসল আকাশের ডেটায় চন্দ্র-রাত পার করে ল্যান্ডার বাঁচিয়ে রাখো।",
     api: "ডেভেলপারদের জন্য: JSON API",
   },
+  p3: {
+    share: "এই পরিকল্পনার লিংক কপি করো", copied: "লিংক কপি হয়েছে", print: "প্রিন্ট করো বা PDF হিসেবে রাখো",
+    briefT: "অবতরণের সারপত্র", briefMission: "{n} দিনের মিশন",
+  },
+  m: {
+    title: "আসল চাঁদে অবতরণ, আবার দেখো",
+    intro: "এ পর্যন্ত তিনটা CLPS ল্যান্ডার চাঁদে পৌঁছেছে। প্রতিটা ল্যান্ডার যে আকাশ দেখেছিল তা এখানে প্ল্যানারের একই ইঞ্জিন দিয়ে হিসাব করা, পাশে আছে আসলে কী ঘটেছিল।",
+    pick: "মিশন",
+    landed: "অবতরণ", lastContact: "শেষ যোগাযোগ", toLanding: "অবতরণের সময়ে ফেরো", slider: "মিশনের সময় ধরে",
+    skyAlt: "{name}-এর অবতরণ-স্থান থেকে আকাশ",
+    stBefore: "এখনো নামেনি", stOver: "মিশন শেষ",
+    checkT: "মডেল যা হিসাব করে", checkH: "JPL-এর টেবিল থেকে, অবতরণের আসল জায়গা আর সময়ের জন্য। সবুজ লেখাগুলো মিশনের রিপোর্টের সাথে তুলনা।",
+    fSun: "অবতরণের সময় সূর্য", fEarth: "অবতরণের সময় পৃথিবী", fSunrise: "অবতরণের আগের সূর্যোদয়", fSunset: "অবতরণের পরের সূর্যাস্ত", fEclipse: "সূর্য পুরোপুরি পৃথিবীর আড়ালে",
+    above: "দিগন্তের {x}° উপরে",
+    afterSunrise: "সূর্যোদয়ের {d} পরে অবতরণ",
+    endAfter: "এই সূর্যাস্তের {d} পরে শেষ যোগাযোগ", endBefore: "এই সূর্যাস্তের {d} আগে মিশন শেষ",
+    eclipseNote: "Blue Ghost চাঁদের মাটি থেকে এই গ্রহণের ছবি তুলেছিল",
+    showsT: "রিপ্লে যা দেখায়",
+    smooth: "এই তিনটা সাইট মসৃণ চাঁদ ধরে হিসাব করা: আশপাশের পাহাড় আর গর্ত মডেলে নেই।",
+    src: "অবতরণের সময়, জায়গা আর ফলাফল NASA আর মিশন দলের প্রকাশিত রিপোর্ট থেকে নেওয়া।",
+    open: "এই জায়গা প্ল্যানারে খোলো",
+    im1: {
+      tag: "হেলে নেমেছে",
+      what: "Odysseus ছিল ১৯৭২ সালের Apollo 17-এর পর যুক্তরাষ্ট্রের প্রথম সফল চন্দ্র-অবতরণ, আর কোনো বেসরকারি কোম্পানির প্রথম। নামার সময় একটা পা ভেঙে যায় আর ল্যান্ডার প্রায় ৩০° হেলে থাকে। এটা প্রায় এক সপ্তাহ কাজ করেছিল।",
+      shows: "অবতরণের সময় সূর্য ছিল {sun}° উপরে আর পৃথিবী {earth}° উপরে, তাই এই জায়গায় বিদ্যুৎ আর রেডিও যোগাযোগ দুটোই ছিল। মডেল অনুযায়ী সূর্যাস্ত হয়েছে মিশন শেষ হওয়ার কয়েক দিন পরে: হেলে থাকায় সূর্য ডোবার আগেই Odysseus-এর সোলার প্যানেলে আলো পড়া বন্ধ হয়ে যায়।",
+    },
+    bg1: {
+      tag: "পুরোপুরি সফল",
+      what: "Blue Ghost ছিল প্রথম পুরোপুরি সফল বাণিজ্যিক চন্দ্র-অবতরণ। এটা পুরো এক চন্দ্র-দিন, প্রায় ১৪ পৃথিবী-দিন, আর রাতের শুরুতেও কয়েক ঘণ্টা কাজ করেছিল।",
+      shows: "মডেল অনুযায়ী সাইটে সূর্য উঠেছিল অবতরণের কয়েক ঘণ্টা আগে আর ডুবেছিল ১৬ মার্চ ২০২৫-এর সন্ধ্যায়, ঠিক যে সন্ধ্যায় Blue Ghost তার শেষ ডেটা পাঠায়। মডেল আরও দেখায় ১৪ মার্চ সূর্য পুরোপুরি পৃথিবীর আড়ালে চলে গিয়েছিল; এটাই সেই গ্রহণ যার ছবি Blue Ghost তুলেছিল।",
+    },
+    im2: {
+      tag: "কাত হয়ে নেমেছে",
+      what: "Athena আগের যেকোনো ল্যান্ডারের চেয়ে দক্ষিণ মেরুর কাছে নেমেছিল, Mons Mouton-এ লক্ষ্য থেকে প্রায় ২৫০ মিটার দূরে। এটা একটা ছোট গর্তের ভেতরে কাত হয়ে পড়ে, চার্জ নিতে পারেনি, আর পরের দিনই মিশন শেষ হয়ে যায়।",
+      shows: "অবতরণের সময় সূর্য দিগন্তের মাত্র {sun}° উপরে ছিল। এত নিচু সূর্যকে গর্তের একটা দেয়ালই আড়াল করে দিতে পারে, আর গর্তের ভেতরে কাত হয়ে থাকা Athena-র চার্জ নেওয়ার কোনো উপায় ছিল না। এ কারণেই প্ল্যানার দিগন্তের প্রতিটা ডিগ্রি হিসাব করে।",
+    },
+  },
   l3: {
     help: "কোনো সাইট বেছে তার আকাশ দেখো। বারটা সরিয়ে ৩০ দিন পর্যন্ত সামনে দেখো।",
     count: "টা সাইট ({m}টার মধ্যে) ল্যান্ডার চালাতে পারে", now: "এই মুহূর্তে", at: "{d} পরে",
@@ -408,6 +488,9 @@ const bn: Dict = {
       frozen: "ব্‌র্‌র্‌… ব্যাটারি শেষ হয়ে গেছে।",
     },
     bandHi: "তোমার ল্যান্ডারের সাথে পরিচিত হও",
+    sndOn: "শব্দ চালু", sndOff: "শব্দ বন্ধ",
+    share: "আমার স্কোর শেয়ার করো", copied: "কপি হয়েছে",
+    shareText: "ছায়ার সাথে দৌড়, দৈনিক চ্যালেঞ্জ {day}: {mb} MB বাড়িতে পাঠানো {stars}",
     aiNote: "মিশনের ছবি, উপরের দৃশ্য আর লোডিং-এর ছবি এআই দিয়ে আঁকা, আসল ছবি নয়। গেম যা হিসাব করে তার সবই NASA JPL-এর আসল ডেটা থেকে।",
     x: {
       title: "দক্ষিণ মেরু এত কঠিন কেন?", sub: "নম্বর দেওয়া বিন্দুগুলোতে চাপ দিয়ে জেনে নাও।",
@@ -497,7 +580,7 @@ const bn: Dict = {
             ["LOLA", "NASA-র Lunar Reconnaissance Orbiter-এর লেজার যন্ত্র, যেটা পুরো চাঁদের উচ্চতার ম্যাপ বানিয়েছে।"],
             ["CLPS", "Commercial Lunar Payload Services: NASA প্রাইভেট কোম্পানিকে টাকা দেয় যাতে তাদের ল্যান্ডারে বিজ্ঞানের যন্ত্র চাঁদে যায়।"]],
     howTitle: "সংখ্যাগুলো কীভাবে হিসাব করা",
-    notes: ["<b>সূর্য আর পৃথিবী কোথায়।</b> NASA JPL-এর DE421 ephemeris থেকে, চাঁদের দোলন (librations) সহ, NASA-র LOLA ম্যাপের চাঁদ-ভিত্তিক ফ্রেমে রূপান্তর করা। আলোর যাত্রার সময় আর চাঁদের কেন্দ্র থেকে সাইটের দূরত্বও ধরা হয়েছে। ডেটা ২০২৬–২০৩২, প্রতি ৩ ঘণ্টায়। চাঁদের অবস্থান আলাদা IAU মডেলের সাথে ১৫ আর্কসেকেন্ডের মধ্যে মেলে।",
+    notes: ["<b>সূর্য আর পৃথিবী কোথায়।</b> NASA JPL-এর DE421 ephemeris থেকে, চাঁদের দোলন (librations) সহ, NASA-র LOLA ম্যাপের চাঁদ-ভিত্তিক ফ্রেমে রূপান্তর করা। আলোর যাত্রার সময় আর চাঁদের কেন্দ্র থেকে সাইটের দূরত্বও ধরা হয়েছে। ডেটা ২০২৪–২০৩২, প্রতি ৩ ঘণ্টায়। চাঁদের অবস্থান আলাদা IAU মডেলের সাথে ১৫ আর্কসেকেন্ডের মধ্যে মেলে।",
             "<b>বিদ্যুৎ।</b> সূর্যের চাকতির অন্তত অর্ধেক দিগন্তের উপরে থাকলে গোনা হয়।",
             "<b>সিগন্যাল।</b> পৃথিবীর কেন্দ্র দিগন্ত আর উন্নত সেটিংসের ন্যূনতম উচ্চতার উপরে থাকলে গোনা হয়।",
             "<b>জমির আকার।</b> মসৃণ চাঁদ মানে নিখুঁত গোলক। পাহাড়ের উপর সাইট হলে দিগন্ত একটু নিচে নামে। আসল ভূখণ্ড আসে NASA LOLA উচ্চতার ম্যাপ থেকে, সাথের Python টুল দিয়ে। কেবল আসল ভূখণ্ডই গর্তের কিনারার ছায়া ধরতে পারে।",
@@ -513,6 +596,7 @@ const bn: Dict = {
       vikram: { t: "বিক্রমের রাত", d: "কঠিন", story: "২০২৩ সালে ভারতের বিক্রম ল্যান্ডার ৬৯° দক্ষিণের কাছে নেমে বিজ্ঞানের কাজ করে, কিন্তু প্রথম চন্দ্র-রাতের পর আর জাগেনি। তোমার ল্যান্ডারে টিকে থাকার হিটার আছে। অন্ধকার পার হতে পারবে?", goal: "২ সপ্তাহের রাত পার হয়ে সূর্যোদয়ে জেগে ওঠো।" },
       tipped: { t: "কাত হয়ে পড়া", d: "মাঝারি", story: "২০২৫ সালে একটা ল্যান্ডার কাত হয়ে নেমেছিল, আর সোলার প্যানেল ভুল দিকে মুখ করে ছিল। তোমারটা Malapert পাহাড়ে বাঁকা হয়ে নেমেছে। প্যানেল কেবল এক দিক থেকে সূর্য ধরতে পারে।", goal: "১০ দিনে {g} MB বিজ্ঞানের ডেটা পাঠাও।" },
       peak: { t: "আলোর চূড়া", d: "মুক্ত", story: "তুমিই মিশন প্ল্যানার। দক্ষিণ মেরুর কোনো শৈলশিরায় সাইট আর আগামী এক বছরের যেকোনো তারিখ বেছে নাও, তারপর ১৪ দিনের মিশন চালাও।", goal: "১৪ দিনে যত বেশি সম্ভব ডেটা পাঠাও।" },
+      daily: { t: "আজকের চ্যালেঞ্জ", d: "দৈনিক", story: "প্রতিদিন একটা নতুন মিশন, সবার জন্য একই: দশ দিন, ক্যালেন্ডার থেকে বাছা একটা সাইট আর একটা তারিখ। বন্ধুদের স্কোর ছাড়িয়ে যাও।", goal: "১০ দিনে যত বেশি সম্ভব ডেটা পাঠাও।" },
     },
     best: "তোমার সেরা: {v}", play: "খেলো",
     howto: [["বিজ্ঞান", "ডেটা সংগ্রহ করে, কিন্তু বিদ্যুৎ খরচ করে।"], ["রেডিও", "ডেটা বাড়িতে পাঠায়, কেবল পৃথিবী উপরে থাকলে।"], ["হাইবারনেট", "অন্ধকারে টিকে থাকতে প্রায় সব বন্ধ করে দেয়।"], ["পূর্বাভাস", "কখন সূর্য আর পৃথিবী উঠবে দেখায়। আগে থেকে পরিকল্পনা করো।"]],
@@ -562,5 +646,7 @@ const bn: Dict = {
   },
 };
 
-export type Lang = "en" | "bn";
-export const DICT: Record<Lang, Dict> = { en, bn };
+export type Lang = "en" | "bn" | "es";
+export const LANGS: Lang[] = ["en", "bn", "es"];
+/** A language may leave keys out; lookups fall back to English. */
+export const DICT: Record<Lang, object> = { en, bn, es };

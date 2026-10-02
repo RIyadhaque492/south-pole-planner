@@ -30,7 +30,7 @@ type LanderLook = {
 };
 
 /** Screen position of a point given in the lander's own coordinates. */
-function landerPoint(x: number, y: number, scale: number, a: number, px: number, py: number): [number, number] {
+export function landerPoint(x: number, y: number, scale: number, a: number, px: number, py: number): [number, number] {
   const cs = Math.cos(a), sn = Math.sin(a);
   return [x + (px * cs - py * sn) * scale, y + (px * sn + py * cs) * scale];
 }
@@ -95,7 +95,7 @@ export function drawLander(c: Ctx, x: number, y: number, scale: number, st: Land
   c.restore();
 }
 
-function drawStars(c: Ctx, stars: number[][], w: number, h: number, t: number, dim = 1) {
+export function drawStars(c: Ctx, stars: number[][], w: number, h: number, t: number, dim = 1) {
   c.fillStyle = "#dbe4ee";
   for (const [a, b, m] of stars) {
     const tw = 0.65 + 0.35 * Math.sin(t * (0.8 + m * 2.2) + a * 60);
@@ -106,7 +106,7 @@ function drawStars(c: Ctx, stars: number[][], w: number, h: number, t: number, d
   c.globalAlpha = 1;
 }
 
-function drawSun(c: Ctx, x: number, y: number, r: number, t: number) {
+export function drawSun(c: Ctx, x: number, y: number, r: number, t: number) {
   const R = r * 6.5 * (1 + 0.05 * Math.sin(t * 1.7));
   const g = c.createRadialGradient(x, y, r * 0.3, x, y, R);
   g.addColorStop(0, "rgba(255,214,140,.9)"); g.addColorStop(0.35, "rgba(242,169,59,.28)"); g.addColorStop(1, "rgba(242,169,59,0)");
@@ -123,7 +123,7 @@ function drawSun(c: Ctx, x: number, y: number, r: number, t: number) {
 
 const LAND = [[-0.55, -0.25, 0.42, 0.3], [0.25, 0.2, 0.5, 0.34], [-0.15, 0.62, 0.3, 0.18], [0.85, -0.5, 0.36, 0.26], [1.45, 0.1, 0.44, 0.3], [-1.25, 0.3, 0.4, 0.3]];
 /** Earth with its real phase: `lit` is the sunlit fraction of the disc and `ang` points at the Sun on screen. */
-function drawEarth(c: Ctx, x: number, y: number, r: number, ang: number, lit: number, t: number) {
+export function drawEarth(c: Ctx, x: number, y: number, r: number, ang: number, lit: number, t: number) {
   c.save(); c.translate(x, y);
   const g = c.createRadialGradient(0, 0, r * 0.8, 0, 0, r * 2.6);
   g.addColorStop(0, "rgba(110,167,242,.3)"); g.addColorStop(1, "rgba(110,167,242,0)");
@@ -144,7 +144,7 @@ function drawEarth(c: Ctx, x: number, y: number, r: number, ang: number, lit: nu
 }
 
 /** `n` dots travelling from a to b; used for sunlight, science bits and radio packets. */
-function flow(c: Ctx, a: [number, number], b: [number, number], n: number, t: number, speed: number, col: string, r: number) {
+export function flow(c: Ctx, a: [number, number], b: [number, number], n: number, t: number, speed: number, col: string, r: number) {
   c.fillStyle = col;
   for (let k = 0; k < n; k++) {
     const p = (t * speed + k / n) % 1;
@@ -154,7 +154,7 @@ function flow(c: Ctx, a: [number, number], b: [number, number], n: number, t: nu
   c.globalAlpha = 1;
 }
 
-function seeded(seed: number) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+export function seeded(seed: number) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
 const MASCOT_STARS = (() => { const rnd = seeded(31); return Array.from({ length: 40 }, () => [rnd(), rnd() * 0.75, rnd()]); })();
 /** The lander on its own, for the debrief and the landing page. */
 export function drawMascot(cv: HTMLCanvasElement, mood: Mood, t = 0, height = 150) {
@@ -176,7 +176,11 @@ export function drawMascot(cv: HTMLCanvasElement, mood: Mood, t = 0, height = 15
   }
 }
 
-export type SkyView = { sunEl: number; sunAz: number; earthEl: number; earthAz: number; power: boolean; link: boolean; center: number };
+export type SkyView = {
+  sunEl: number; sunAz: number; earthEl: number; earthAz: number; power: boolean; link: boolean; center: number;
+  /** Mission replays: how far the lander leans, whether it has stopped working, and whether it has landed yet. */
+  tilt?: number; over?: boolean; lander?: boolean;
+};
 export type SkyLabels = { sun: string; earth: string; exag: (k: number) => string; below: string; hill: string };
 const SKY_STARS = (() => { const rnd = seeded(53); return Array.from({ length: 90 }, () => [rnd(), rnd(), rnd()]); })();
 
@@ -188,7 +192,9 @@ export function drawSkyNow(cv: HTMLCanvasElement, v: SkyView, L: SkyLabels, t = 
   const mono = css("--mono"), body = css("--sans"), lit = v.power ? 1 : 0;
   c.fillStyle = "#05070a"; c.fillRect(0, 0, w, h);
   drawStars(c, SKY_STARS, w, y0, t, 1 - 0.4 * lit);
-  const sx = X(v.sunAz), sy = Y(v.sunEl), ex = X(v.earthAz), ey = Y(v.earthEl);
+  // Away from the poles the Sun and Earth climb far above this low-horizon view: pin them to the top edge with an arrow.
+  const sunHigh = Y(v.sunEl) < 26, earthHigh = Y(v.earthEl) < 28;
+  const sx = X(v.sunAz), sy = Math.max(26, Y(v.sunEl)), ex = X(v.earthAz), ey = Math.max(28, Y(v.earthEl));
   const cosSep = Math.sin(v.sunEl * D) * Math.sin(v.earthEl * D) + Math.cos(v.sunEl * D) * Math.cos(v.earthEl * D) * Math.cos((v.sunAz - v.earthAz) * D);
   drawEarth(c, ex, ey, 14, Math.atan2(sy - ey, sx - ex), (1 - cosSep) / 2, t);
   drawSun(c, sx, sy, 11, t);
@@ -223,27 +229,28 @@ export function drawSkyNow(cv: HTMLCanvasElement, v: SkyView, L: SkyLabels, t = 
     c.font = `600 11.5px ${body}`; c.textBaseline = "bottom"; c.textAlign = right ? "right" : "left"; c.fillStyle = col;
     c.fillText(text, right ? w - 10 : 10, h - 8);
   };
-  if (sy > y0 + 6) corner(`${L.sun}: ${L.below}`, SUN, false); else tag(sx, sy - 14, sunHidden ? `${L.sun}: ${L.hill}` : L.sun, SUN);
-  if (ey > y0 + 6) corner(`${L.earth}: ${L.below}`, EARTH, true); else tag(ex, ey - 16, earthHidden ? `${L.earth}: ${L.hill}` : L.earth, EARTH);
+  if (sy > y0 + 6) corner(`${L.sun}: ${L.below}`, SUN, false); else tag(sx, sunHigh ? sy : sy - 14, sunHidden ? `${L.sun}: ${L.hill}` : sunHigh ? `${L.sun} ↑ ${Math.round(v.sunEl)}°` : L.sun, SUN);
+  if (ey > y0 + 6) corner(`${L.earth}: ${L.below}`, EARTH, true); else tag(ex, earthHigh ? ey : ey - 16, earthHidden ? `${L.earth}: ${L.hill}` : earthHigh ? `${L.earth} ↑ ${Math.round(v.earthEl)}°` : L.earth, EARTH);
   c.font = `11px ${mono}`; c.fillStyle = "rgba(200,210,220,.45)"; c.textAlign = "right"; c.textBaseline = "top";
   c.fillText(L.exag(Math.max(1, Math.round(k / (w / 360)))), w - 12, 10);
+  if (v.lander === false) return;
   // the lander shows what the sky means for it
-  const S = 1.5, lx = w / 2, gy = h - 22, away = sx < lx ? 1 : -1;
+  const S = 1.5, lx = w / 2, tilt = v.tilt ?? 0, gy = h - 22 - (tilt < -0.9 ? 18 : 0), away = sx < lx ? 1 : -1, on = !v.over;
   if (v.power) {
     const sg = c.createLinearGradient(lx, 0, lx + away * 200, 0);
     sg.addColorStop(0, "rgba(0,0,0,.45)"); sg.addColorStop(1, "rgba(0,0,0,0)");
     c.fillStyle = sg; c.beginPath(); c.moveTo(lx - 26, gy); c.lineTo(lx + 26, gy + 4); c.lineTo(lx + away * 200, gy + 14); c.lineTo(lx + away * 200, gy + 4); c.fill();
   }
   c.fillStyle = "rgba(0,0,0,.4)"; c.beginPath(); c.ellipse(lx, gy + 2, 36, 4, 0, 0, TAU); c.fill();
-  const dish = landerPoint(lx, gy, S, 0, 9, -31), head = landerPoint(lx, gy, S, 0, 0, -24);
+  const dish = landerPoint(lx, gy, S, tilt, 9, -31), head = landerPoint(lx, gy, S, tilt, 0, -24);
   const target = v.power ? [sx, sy] : v.link ? [ex, ey] : [lx, head[1] - 50], ld = Math.hypot(target[0] - head[0], target[1] - head[1]) || 1;
-  if (v.power) flow(c, [sx, sy], landerPoint(lx, gy, S, 0, -25, -36), 7, t, 0.35, "rgba(255,217,138,.75)", 2);
+  if (v.power && on) flow(c, [sx, sy], landerPoint(lx, gy, S, tilt, -25, -36), 7, t, 0.35, "rgba(255,217,138,.75)", 2);
   drawLander(c, lx, gy, S, {
-    t, charge: lit, antAng: Math.atan2(ey - dish[1], ex - dish[0]), frost: !v.power,
-    mood: v.power && v.link ? "happy" : v.power ? "awake" : v.link ? "worry" : "sleep",
+    t, tilt, charge: on ? lit : 0, antAng: Math.atan2(ey - dish[1], ex - dish[0]), frost: !v.power || !on,
+    mood: !on ? "sleep" : v.power && v.link ? "happy" : v.power ? "awake" : v.link ? "worry" : "sleep",
     look: [(target[0] - head[0]) / ld, (target[1] - head[1]) / ld],
   });
-  if (v.link) {
+  if (v.link && on) {
     c.strokeStyle = "rgba(110,167,242,.35)"; c.lineWidth = 1; c.beginPath(); c.moveTo(dish[0], dish[1]); c.lineTo(ex, ey); c.stroke();
     flow(c, dish, [ex, ey], 6, t, 0.5, "#a9cbff", 2.4);
   }

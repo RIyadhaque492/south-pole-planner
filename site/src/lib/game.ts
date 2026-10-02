@@ -1,5 +1,5 @@
 /* Race the Shadow: simulation core. One step = one hour. Balance notes live in GAME_DESIGN.md. */
-import { D, HOUR, series, type Series } from "./ephemeris";
+import { D, DAY, HOUR, series, type Series } from "./ephemeris";
 import { SITE_SEEDS, seedById } from "./sites";
 
 /* =====================================================================
@@ -24,11 +24,13 @@ export const siteById = (id: string): SiteRef => seedById(id);
 /** Hourly sky for a site, from t0 for `hours` hours (n = hours + 1 samples). */
 export const hourly = (s: SiteRef, t0: number, hours: number) => series(s, t0, t0 + hours * HOUR, HOUR);
 
-export type ScnKey = "vikram" | "tipped" | "peak";
+export type ScnKey = "vikram" | "tipped" | "peak" | "daily";
 export interface Scenario {
   site: SiteRef; land: number; hours: number; battery: number;
   winBy: "survive" | "data" | "score"; stars: number[];
   target?: number; panelAz?: number; nightH?: number;
+  /** The UTC date a daily challenge belongs to. */
+  day?: string;
 }
 
 const SCN_START = Date.UTC(2026, 9, 10);
@@ -39,6 +41,14 @@ function findFrom(site: SiteRef, from: number, hours: number, test: (o: Series, 
 }
 const rises = (o: Series, i: number) => o.sFrac[i] >= 0.5 && o.sFrac[i - 1] < 0.5;
 const sets = (o: Series, i: number) => o.sFrac[i] < 0.5 && o.sFrac[i - 1] >= 0.5;
+
+/** The UTC day as YYYY-MM-DD: everyone playing on the same day gets the same daily challenge. */
+export const dayKey = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+/** A sensible player, used to set the star scores for a daily challenge. */
+const steady = (s: SimState, o: Series) => {
+  const dark = o.sFrac[s.i] < 0.5;
+  s.hib = dark; s.rad = true; s.sci = !dark && s.bat / CFG.batteryWh > 0.3 && s.stored < CFG.storageMB;
+};
 
 export const SCENARIOS: Record<ScnKey, { icon: "night" | "tipped" | "peak"; diff: "hard" | "med" | "easy"; needsSetup?: boolean; build: (siteId?: string, land?: number) => Scenario }> = {
   vikram: {
@@ -67,6 +77,22 @@ export const SCENARIOS: Record<ScnKey, { icon: "night" | "tipped" | "peak"; diff
     icon: "peak", diff: "easy", needsSetup: true,
     build(siteId = "B", land = Date.UTC(2026, 9, 15)) {
       return { site: siteById(siteId), land, hours: 336, battery: 0.8, winBy: "score", stars: [150, 240, 300] };
+    },
+  },
+  daily: {
+    icon: "peak", diff: "med",
+    // One site and landing date per UTC day, picked from the date so every player gets the same mission.
+    build(_site, today = Date.now()) {
+      let seed = (Math.floor(today / DAY) * 2654435761) % 2147483647;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      rnd(); rnd();
+      const site = GAME_SITES[Math.floor(rnd() * GAME_SITES.length)];
+      const from = Date.UTC(2026, 9, 1) + Math.floor(rnd() * 440) * DAY;
+      const land = (findFrom(site, from, 24 * 40, rises) ?? from) + 6 * HOUR;
+      const sc: Scenario = { site, land, hours: 240, battery: 0.6, winBy: "score", stars: [5, 5, 5], day: dayKey(today) };
+      const par = simulate(sc, steady).s.sent;
+      sc.stars = [0.5, 0.75, 0.95].map((k) => Math.max(5, Math.round(par * k)));
+      return sc;
     },
   },
 };

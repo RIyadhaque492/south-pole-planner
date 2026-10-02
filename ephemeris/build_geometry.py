@@ -12,7 +12,7 @@ browser compute Sun/Earth elevation and azimuth for ANY site on the Moon.
 Source: JPL DE421 planetary and lunar ephemeris, including its lunar libration angles.
 
 Usage:
-    python build_geometry.py --de421 ./de421 --start 2026-01-01 --end 2032-12-31 --step-hours 3
+    python build_geometry.py --de421 ./de421 --start 2024-01-01 --end 2032-12-31 --step-hours 3
 Output:
     geometry.json  (base64 Float32 array + metadata)
 """
@@ -104,7 +104,7 @@ def jd_from_datetime(d):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--de421", default=str(Path(__file__).parent / "de421"))
-    ap.add_argument("--start", default="2026-01-01")
+    ap.add_argument("--start", default="2024-01-01")
     ap.add_argument("--end", default="2032-12-31")
     ap.add_argument("--step-hours", type=float, default=3.0)
     ap.add_argument("--out", default=str(Path(__file__).parent / "geometry.json"))

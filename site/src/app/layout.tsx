@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Hind_Siliguri, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { LangProvider } from "@/lib/i18n";
+import { OfflineReady } from "@/components/OfflineReady";
 import { SiteHeader } from "@/components/SiteHeader";
 import "./globals.css";
 import "./landing.css";
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <LangProvider>
+          <OfflineReady />
           <SiteHeader />
           {children}
         </LangProvider>

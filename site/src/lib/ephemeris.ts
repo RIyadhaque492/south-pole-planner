@@ -1,5 +1,5 @@
 /* Sun and Earth geometry from NASA JPL DE421 (with lunar librations), in the Moon ME frame.
-   public/geometry.bin is float32 little-endian, one row every 3 h from 2026-01-01:
+   public/geometry.bin is float32 little-endian, one row every 3 h from 2024-01-01:
    sunX sunY sunZ (unit vector) earthX earthY earthZ (km). Built from ephemeris/geometry.json. */
 
 export const D = Math.PI / 180;
@@ -8,7 +8,7 @@ export const SUN_R = 0.2666; // apparent solar radius, degrees
 export const HOUR = 3600e3;
 export const DAY = 86400e3;
 
-const META = { t0: 1767225600000, step: 10800000, n: 20449 };
+const META = { t0: 1704067200000, step: 10800000, n: 26297 };
 export const T_MIN = META.t0;
 export const T_MAX = META.t0 + (META.n - 1) * META.step;
 

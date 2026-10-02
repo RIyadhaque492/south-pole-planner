@@ -7,13 +7,14 @@ import { useAnimCanvas } from "@/lib/canvas";
 import { useI18n } from "@/lib/i18n";
 import type { Board, BoardSite } from "@/lib/sky";
 import { SectionHead } from "@/components/ui";
-import { drawSkyNow } from "@/components/game/art";
+import { TimeBar, type Run } from "@/components/TimeBar";
+import { drawSkyDial } from "./skyDial";
 
 const POWER = 1, LINK = 2;
 const flag = (s: BoardSite, i: number) => +s.flags[i];
 /** [start, length] of every stretch where `bit` is set. */
 function runs(s: BoardSite, bit: number) {
-  const out: [number, number][] = [];
+  const out: Run[] = [];
   for (let i = 0, from = -1; i <= s.flags.length; i++) {
     const on = i < s.flags.length && (flag(s, i) & bit) !== 0;
     if (on && from < 0) from = i;
@@ -22,15 +23,12 @@ function runs(s: BoardSite, bit: number) {
   return out;
 }
 
-/** The lander's view from the chosen site, redrawn every frame. */
+/** The chosen site as a small model: the Sun circles the lander on the horizon. Redrawn every frame. */
 function SiteSky({ site, i }: { site: BoardSite; i: number }) {
   const { t, lang } = useI18n();
-  const f = flag(site, i);
-  const ref = useAnimCanvas((cv, now) => drawSkyNow(cv, {
-    sunEl: site.sunEl[i], sunAz: site.sunAz[i], earthEl: site.earthEl[i], earthAz: site.earthAz[i],
-    power: (f & POWER) !== 0, link: (f & LINK) !== 0, center: site.earthAz[0],
-  }, { sun: t("sun"), earth: t("earth"), exag: (k) => t("g.exag", { k }), below: t("l3.below"), hill: t("l3.hill") }, now), [site, i, lang]);
-  return <canvas ref={ref} className="board-sky" role="img" aria-label={t("l3.skyAlt", { site: site.name })} />;
+  const ref = useAnimCanvas((cv, now) => drawSkyDial(cv, site, i,
+    { sun: t("sun"), earth: t("earth"), exag: (k) => t("g.exag", { k }), below: t("l3.below"), hill: t("l3.hill") }, now), [site, i, lang]);
+  return <canvas ref={ref} className="board-sky dial" role="img" aria-label={t("l3.skyAlt", { site: site.name })} />;
 }
 
 /**
@@ -43,6 +41,7 @@ export function LiveBoard({ board }: { board: Board }) {
   const [i, setI] = useState(0);
   const [sel, setSel] = useState(sites[0].id);
   const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
   const [clock, setClock] = useState(board.from);
 
   useEffect(() => {
@@ -51,9 +50,9 @@ export function LiveBoard({ board }: { board: Board }) {
   }, []);
   useEffect(() => {
     if (!playing) return;
-    const id = setInterval(() => setI((v) => (v + 1) % n), 110);
+    const id = setInterval(() => setI((v) => (v + 1) % n), 110 / speed);
     return () => clearInterval(id);
-  }, [playing, n]);
+  }, [playing, n, speed]);
 
   const site = sites.find((s) => s.id === sel) ?? sites[0];
   const f = flag(site, i), power = (f & POWER) !== 0, link = (f & LINK) !== 0;
@@ -125,26 +124,16 @@ export function LiveBoard({ board }: { board: Board }) {
         </div>
 
         <div className="board-time">
-          <div className="time-head">
-            <button type="button" className="btn small" onClick={() => setPlaying((p) => !p)} aria-pressed={playing}>{playing ? "❚❚" : "▶"} {t(playing ? "l3.pause" : "l3.play")}</button>
-            <span className="mono time-now">{fmt(board.from + i * stepH * HOUR)} UTC</span>
-            <button type="button" className="btn small" disabled={i === 0 && !playing} onClick={() => { setPlaying(false); setI(0); }}>{t("l3.reset")}</button>
-          </div>
-          <div className="strip">
-            <svg viewBox={`0 0 ${n} 26`} preserveAspectRatio="none" aria-hidden="true">
-              <rect className="track" x="0" y="0" width={n} height="11" /><rect className="track" x="0" y="15" width={n} height="11" />
-              {runs(site, POWER).map(([a, w]) => <rect key={"s" + a} className="sun" x={a} y="0" width={w} height="11" />)}
-              {runs(site, LINK).map(([a, w]) => <rect key={"e" + a} className="earth" x={a} y="15" width={w} height="11" />)}
-            </svg>
-            <span className="strip-mark" style={{ left: `${(i / (n - 1)) * 100}%` }} />
-            <input type="range" min={0} max={n - 1} step={1} value={i} aria-label={t("l3.slider")}
-              aria-valuetext={`${fmt(board.from + i * stepH * HOUR)} UTC`}
-              onChange={(e) => { setPlaying(false); setI(+e.target.value); }} />
-          </div>
-          <div className="strip-legend">
-            <span><i className="sun" />{t("l3.legSun")}</span><span><i className="earth" />{t("l3.legEarth")}</span>
-            <span className="ends"><span>{t("l3.now")}</span><span>{t("l3.end", { d: dur((n - 1) * stepH) })}</span></span>
-          </div>
+          <TimeBar n={n} i={i} onSeek={(v) => { setPlaying(false); setI(v); }}
+            playing={playing} onToggle={() => setPlaying((v) => !v)} speed={speed} onSpeed={setSpeed}
+            sun={runs(site, POWER)} earth={runs(site, LINK)} laneKey={site.id} perDay={24 / stepH}
+            labelAt={(k) => `${fmt(board.from + k * stepH * HOUR)} UTC`}
+            playLabel={t("l3.play")} pauseLabel={t("l3.pause")} speedLabel={t("p.speed")} sliderLabel={t("l3.slider")}
+            reset={{ label: t("l3.reset"), disabled: i === 0 && !playing, onClick: () => { setPlaying(false); setI(0); } }}
+            legend={<>
+              <span><i className="sun" />{t("l3.legSun")}</span><span><i className="earth" />{t("l3.legEarth")}</span>
+              <span className="ends"><span>{t("l3.now")}</span><span>{t("l3.end", { d: dur((n - 1) * stepH) })}</span></span>
+            </>} />
         </div>
       </div>
     </div>

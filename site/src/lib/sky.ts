@@ -55,6 +55,8 @@ export interface BoardSite {
   sunEl: number[]; sunAz: number[]; earthEl: number[]; earthAz: number[];
   /** One digit per sample: 1 = sunlight for power, 2 = Earth in view, 3 = both, 0 = neither. */
   flags: string;
+  /** The LOLA skyline every 2° of azimuth, or null on a smooth Moon. */
+  horizon: number[] | null;
 }
 export interface Board { from: number; stepH: number; n: number; sites: BoardSite[] }
 
@@ -65,7 +67,7 @@ export function board(seeds: SiteSeed[], from: number, days = 30, stepH = 3): Bo
     const s = withTerrain(seed), o = series(s, from, from + days * DAY, stepH * HOUR);
     let flags = "";
     for (let i = 0; i < o.n; i++) flags += (o.sFrac[i] >= 0.5 ? 1 : 0) + (o.eAlt[i] >= 0 ? 2 : 0);
-    return { id: s.id, name: s.name, sunEl: round(o.sEl, 2), sunAz: round(o.sAz, 0), earthEl: round(o.eEl, 2), earthAz: round(o.eAz, 0), flags };
+    return { id: s.id, name: s.name, sunEl: round(o.sEl, 2), sunAz: round(o.sAz, 1), earthEl: round(o.eEl, 2), earthAz: round(o.eAz, 1), flags, horizon: s.mask ? Array.from({ length: 180 }, (_, j) => +s.mask![j * 2].toFixed(1)) : null };
   });
   return { from, stepH, n: sites[0].flags.length, sites };
 }

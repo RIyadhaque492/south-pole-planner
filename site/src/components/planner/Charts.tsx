@@ -45,10 +45,11 @@ export function SkyPanorama({ o, site, t: tm }: { o: Series; site: Site; t: numb
 
     // trails over the whole period
     const trail = (azA: Float32Array, elA: Float32Array, col: string) => {
+      c.save(); c.beginPath(); c.rect(L, T, pw, ph); c.clip(); // keep dots below the bottom of the scale inside the frame
       c.fillStyle = col; c.globalAlpha = 0.3;
       const k = Math.max(1, Math.floor(o.n / 900));
       for (let i = 0; i < o.n; i += k) c.fillRect(X(azA[i]) - 1, Y(elA[i]) - 1, 2, 2);
-      c.globalAlpha = 1;
+      c.restore();
     };
     trail(o.sAz, o.sEl, css("--sun")); trail(o.eAz, o.eEl, css("--earth"));
 

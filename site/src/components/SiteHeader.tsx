@@ -42,7 +42,7 @@ function ThemeToggle() {
 export function SiteHeader() {
   const { t, lang, setLang } = useI18n();
   const path = usePathname();
-  const at = path?.startsWith("/game") ? "game" : path?.startsWith("/planner") ? "planner" : "home";
+  const at = path?.startsWith("/game") ? "game" : path?.startsWith("/planner") ? "planner" : path?.startsWith("/missions") ? "missions" : "home";
   return (
     <header className="topbar">
       <div className="topbar-in">
@@ -50,12 +50,14 @@ export function SiteHeader() {
         <nav className="tabs" aria-label="Sections">
           <Link href="/" aria-current={at === "home" ? "page" : undefined}>{t("nav.home")}</Link>
           <Link href="/planner" aria-current={at === "planner" ? "page" : undefined}>{t("nav.planner")}</Link>
+          <Link href="/missions" aria-current={at === "missions" ? "page" : undefined}>{t("nav.missions")}</Link>
           <Link href="/game" aria-current={at === "game" ? "page" : undefined}>{t("nav.game")}</Link>
         </nav>
         <div className="topbar-tools">
           <div className="seg" role="group" aria-label="Language">
             <button type="button" aria-pressed={lang === "en"} onClick={() => setLang("en")}>EN</button>
             <button type="button" aria-pressed={lang === "bn"} onClick={() => setLang("bn")} lang="bn">বাংলা</button>
+            <button type="button" aria-pressed={lang === "es"} onClick={() => setLang("es")} lang="es">ES</button>
           </div>
           <ThemeToggle />
         </div>

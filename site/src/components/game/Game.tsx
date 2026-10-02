@@ -5,11 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DAY, HOUR, T_MAX, type Series } from "@/lib/ephemeris";
 import { fmtD, pad } from "@/lib/format";
 import {
-  CFG, GAME_SITES, SCENARIOS, hourly, newState, panelFactor, starsFor, step,
+  CFG, GAME_SITES, SCENARIOS, dayKey, hourly, newState, panelFactor, starsFor, step,
   type ScnKey, type Scenario, type SimState,
 } from "@/lib/game";
 import { reducedMotion, useAnimCanvas, useRedrawSignal } from "@/lib/canvas";
 import { useI18n } from "@/lib/i18n";
+import { setHum, setSound, sfx, soundOn, type Sfx } from "@/lib/sound";
 import { drawForecast, drawReplay, drawScene } from "./art";
 import { Mascot } from "./Mascot";
 import { PoleExplainer } from "./PoleExplainer";
@@ -21,12 +22,19 @@ interface Mission {
   flags: Record<string, boolean>; log: LogEntry[];
   /** Progress through the current hour (0..1), for the scene animation. */
   frac: number;
+  /** Where this mission's best score is stored: the scenario, or the day for a daily challenge. */
+  bestId: string;
 }
 type Screen = "pick" | "setup" | "play" | "end";
 
 const KEYS: ScnKey[] = ["vikram", "tipped", "peak"];
 const PEAK_MIN = Date.UTC(2026, 9, 1), PEAK_MAX = Math.min(T_MAX - 20 * DAY, Date.UTC(2027, 11, 31));
 const bestKey = (k: string) => "rts-best-" + k;
+/** Sound for each kind of mission event. */
+const EVENT_SFX: Record<string, Sfx> = {
+  "g.ev.sunrise": "sunrise", "g.ev.sunset": "sunset", "g.ev.earthrise": "earth", "g.ev.earthset": "earth",
+  "g.ev.sunsetSoon": "alert", "g.ev.earthsetSoon": "alert", "g.ev.batLow": "alert", "g.ev.storeFull": "alert",
+};
 const ICONS: Record<LogKind | "tip", string> = { sun: "☀️", earth: "🌍", bad: "⚠️", good: "✅", tip: "💡" };
 const TOGGLE_ICONS = { sci: "🔬", rad: "📡", hib: "😴" };
 const HOWTO_ICONS = ["🔬", "📡", "😴", "📅"];
@@ -53,6 +61,8 @@ export function Game() {
   const [pSite, setPSite] = useState("B");
   const [pDate, setPDate] = useState(fmtD(Date.UTC(2026, 9, 15)));
   const [bests, setBests] = useState<Record<string, number>>({});
+  const [today, setToday] = useState("");
+  const [snd, setSnd] = useState(true);
   // The simulation object is mutated in place by the animation loop (m.current); `mission` exposes it to render.
   const m = useRef<Mission | null>(null);
   const [mission, setMission] = useState<Mission | null>(null);
@@ -63,13 +73,14 @@ export function Game() {
 
   useEffect(() => {
     const b: Record<string, number> = {};
-    try { for (const k of KEYS) b[k] = +(localStorage.getItem(bestKey(k)) ?? 0) || 0; } catch {}
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- scores only exist in this browser's storage
-    setBests(b);
+    const day = dayKey(Date.now());
+    try { for (const k of [...KEYS, "daily-" + day]) b[k] = +(localStorage.getItem(bestKey(k)) ?? 0) || 0; } catch {}
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- scores, the date and the sound setting only exist in the browser
+    setBests(b); setToday(day); setSnd(soundOn());
   }, []);
 
   const goalFor = (key: ScnKey, sc?: Scenario) =>
-    key === "tipped" ? t("g.scn.tipped.goal", { g: sc?.target ?? 120 }) : key === "peak" ? t("g.goalPeak") : t("g.scn.vikram.goal");
+    key === "daily" ? t("g.scn.daily.goal") : key === "tipped" ? t("g.scn.tipped.goal", { g: sc?.target ?? 120 }) : key === "peak" ? t("g.goalPeak") : t("g.scn.vikram.goal");
 
   /* ---------- mission runtime ---------- */
   const log = (M: Mission, kind: LogKind, key: string, vars?: Record<string, number>) => {
@@ -82,7 +93,7 @@ export function Game() {
     const { o, s, flags } = M, i = s.i;
     if (i < 1) return false;
     let pause = false;
-    const alert = (kind: LogKind, key: string, vars?: Record<string, number>, p = true) => { log(M, kind, key, vars); if (p) pause = true; };
+    const alert = (kind: LogKind, key: string, vars?: Record<string, number>, p = true) => { log(M, kind, key, vars); sfx(EVENT_SFX[key]); if (p) pause = true; };
     const sunUp = o.sFrac[i] >= 0.5, wasUp = o.sFrac[i - 1] >= 0.5, eUp = o.eEl[i] >= 0, eWas = o.eEl[i - 1] >= 0;
     if (sunUp && !wasUp) { alert("sun", "g.ev.sunrise", undefined, false); flags.sunsetWarn = false; }
     if (!sunUp && wasUp) alert("bad", "g.ev.sunset", undefined, false);
@@ -103,9 +114,10 @@ export function Game() {
     setSpeed(0);
     log(M, M.s.dead ? "bad" : "good", M.s.dead ? "g.ev.frozen" : "g.ev.done");
     rerender();
+    sfx(M.s.dead ? "lose" : "win");
     const sent = Math.round(M.s.sent);
-    try { if (sent > (+(localStorage.getItem(bestKey(M.key)) ?? 0) || 0)) localStorage.setItem(bestKey(M.key), String(sent)); } catch {}
-    setBests((b) => ({ ...b, [M.key]: Math.max(b[M.key] ?? 0, sent) }));
+    try { if (sent > (+(localStorage.getItem(bestKey(M.bestId)) ?? 0) || 0)) localStorage.setItem(bestKey(M.bestId), String(sent)); } catch {}
+    setBests((b) => ({ ...b, [M.bestId]: Math.max(b[M.bestId] ?? 0, sent) }));
     setTimeout(() => setScreen("end"), 900);
   }, []);
 
@@ -118,9 +130,12 @@ export function Game() {
       last = ts; acc += (dt / 1000) * speed;
       let paused = false;
       while (acc >= 1 && !M.s.dead && !M.s.done) {
+        const before = Math.floor(M.s.sent / 16);
         acc -= 1; step(M.sc, M.o, M.s);
+        if (Math.floor(M.s.sent / 16) > before) sfx("send");
         if (checkEvents(M)) { paused = true; break; }
       }
+      setHum(!M.s.hib && !M.s.dead && !paused);
       M.frac = paused || M.s.dead || M.s.done ? 0 : Math.min(1, acc);
       rerender();
       if (M.s.dead || M.s.done) return finish();
@@ -128,7 +143,7 @@ export function Game() {
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); setHum(false); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speed, screen, finish]);
 
@@ -137,7 +152,7 @@ export function Game() {
     const o = hourly(sc.site, sc.land, sc.hours + 130);
     let seed = 7;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    const M: Mission = { key, sc, o, s: newState(sc), stars: Array.from({ length: 160 }, () => [rnd(), rnd(), rnd()]), flags: {}, log: [], frac: 0 };
+    const M: Mission = { key, sc, o, s: newState(sc), stars: Array.from({ length: 160 }, () => [rnd(), rnd(), rnd()]), flags: {}, log: [], frac: 0, bestId: sc.day ? "daily-" + sc.day : key };
     log(M, "good", "g.ev.land");
     m.current = M;
     setMission(M);
@@ -145,7 +160,7 @@ export function Game() {
     // The clock starts once the lander has touched down.
     setIntro(true);
     clearTimeout(introTimer.current);
-    introTimer.current = setTimeout(() => { setIntro(false); setSpeed(3); }, reducedMotion() ? 400 : 1900);
+    introTimer.current = setTimeout(() => { setIntro(false); setSpeed(3); sfx("land"); }, reducedMotion() ? 400 : 1900);
   };
   const quit = () => { clearTimeout(introTimer.current); setIntro(false); setSpeed(0); setScreen("pick"); };
   useEffect(() => () => clearTimeout(introTimer.current), []);
@@ -168,11 +183,28 @@ export function Game() {
           <div className="eyebrow">{t("g.tagline")}</div>
           <h1>Race the <em className="shadow-word">Shadow</em></h1>
         </div>
-        {screen === "pick" && <p className="lede">{t("g2.intro")}</p>}
+        <div className="game-hero-side">
+          {screen === "pick" && <p className="lede">{t("g2.intro")}</p>}
+          <button type="button" className="btn small sound" aria-pressed={snd} onClick={() => { setSound(!snd); setSnd(!snd); if (!snd) sfx("toggle"); }}>
+            <span aria-hidden="true">{snd ? "🔊" : "🔇"}</span> {t(snd ? "g2.sndOn" : "g2.sndOff")}
+          </button>
+        </div>
       </section>
 
       {screen === "pick" && (
         <section>
+          <button type="button" className="daily" onClick={() => startMission("daily")}>
+            <span className="daily-ico" aria-hidden="true">📅</span>
+            <span className="daily-body">
+              <span className="tag med">{t("g.scn.daily.d")}</span>
+              <b>{t("g.scn.daily.t")} <span className="mono" suppressHydrationWarning>{today}</span></b>
+              <span className="daily-text">{t("g.scn.daily.story")}</span>
+            </span>
+            <span className="daily-side">
+              {bests["daily-" + today] ? <span className="best">{t("g.best", { v: bests["daily-" + today] + " MB" })}</span> : null}
+              <span className="go-arrow">{t("g.play")} →</span>
+            </span>
+          </button>
           <div className="cards">
             {KEYS.map((k) => {
               const d = SCENARIOS[k];
@@ -213,6 +245,7 @@ export function Game() {
           goal={goalFor(mission.key, mission.sc)}
           onToggle={(what) => {
             const M = m.current!, s = M.s;
+            sfx(what === "hib" && !s.hib ? "sleep" : "toggle");
             if (what === "hib") { s.hib = !s.hib; log(M, s.hib ? "earth" : "good", s.hib ? "g.ev.hib" : "g.ev.wake"); }
             else if (what === "sci") s.sci = !s.sci;
             else s.rad = !s.rad;
@@ -388,6 +421,11 @@ function Debrief({ M, lang, onAgain, onPick }: { M: Mission; lang: string; onAga
   const replay = useCanvas((cv) => drawReplay(cv, sc, o, s), [M]);
   const n = starsFor(sc, s);
   const win = !s.dead && (sc.winBy !== "data" || s.sent >= (sc.target ?? 0));
+  const [copied, setCopied] = useState(false);
+  const share = () => {
+    const text = t("g2.shareText", { day: sc.day ?? "", mb: Math.round(s.sent), stars: "★".repeat(n) + "☆".repeat(3 - n) }) + " " + location.origin + "/game";
+    navigator.clipboard?.writeText(text).then(() => setCopied(true), () => {});
+  };
   let why = "";
   if (key === "vikram") {
     const nightH = sc.nightH ?? 0, need = Math.round(nightH * CFG.hibernateW), aw = CFG.avionicsW + CFG.heaterDarkW;
@@ -421,6 +459,7 @@ function Debrief({ M, lang, onAgain, onPick }: { M: Mission; lang: string; onAga
         <div className="row" style={{ marginTop: 14 }}>
           <button type="button" className="btn accent" onClick={onAgain}>{t("g.again")}</button>
           <button type="button" className="btn" onClick={onPick}>{t("g.other")}</button>
+          {sc.day && <button type="button" className="btn" onClick={share}>{copied ? "✓ " + t("g2.copied") : t("g2.share")}</button>}
         </div>
       </div>
       <div className="why">

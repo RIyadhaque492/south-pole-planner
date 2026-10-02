@@ -95,14 +95,14 @@ Check the file's height units (usually metres relative to 1737.4 km; use `--heig
 
 ## Rebuilding the ephemeris table (optional)
 
-`web/index.html` already contains the table for 2026-01-01 → 2032-12-31 at 3-hour steps.
+`web/index.html` already contains the table for 2024-01-01 → 2032-12-31 at 3-hour steps.
 To rebuild or extend it (DE421 covers 1900–2050):
 
 ```bash
 pip install numpy jplephem
 # get the DE421 data package (pip can't build it on new Python, so unpack it):
 pip download de421 --no-deps && tar xzf de421-2008.1.tar.gz && mv de421-2008.1/de421 ephemeris/
-cd ephemeris && python validate.py && python build_geometry.py --start 2026-01-01 --end 2032-12-31
+cd ephemeris && python validate.py && python build_geometry.py --start 2024-01-01 --end 2032-12-31
 cd ../web && python build.py
 ```
 

@@ -4,7 +4,7 @@ import {
   DAY, HOUR, T_MAX, T_MIN, parseHorizonCsv, series, stats, stepFor, subLongitudes,
   type HorizonModel, type Series, type Site, type Stats,
 } from "@/lib/ephemeris";
-import { fmt, fmtD, pct } from "@/lib/format";
+import { fmt, fmtD, latlon, pct } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { SITE_SEEDS } from "@/lib/sites";
 import { withTerrain } from "@/lib/terrain";
@@ -18,7 +18,10 @@ const START_MAX = T_MAX - 370 * DAY;
 const cmpCache = new Map<string, Stats>();
 const clampStart = (v: number, span: number) => Math.max(T_MIN, Math.min(v, T_MAX - span));
 
-/** Deep links from the game and site pages: /planner?site=C3&start=2026-10-12 */
+/**
+ * Deep links and shared plans: /planner?site=C3&start=2026-10-12&days=60&mission=10&mask=0
+ * `site` is a site id or "lat,lon" (with an optional `name`) for any other point on the Moon.
+ */
 function initialFromUrl() {
   let start = Date.UTC(2026, 8, 30);
   const now = Date.now();
@@ -27,21 +30,41 @@ function initialFromUrl() {
     start = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   }
   const q = new URLSearchParams(window.location.search);
+  const days = SPANS.find(([v]) => v === q.get("days"))?.[0] ?? "60";
   const s = Date.parse((q.get("start") ?? "") + "T00:00:00Z");
-  if (!isNaN(s)) start = clampStart(s, 60 * DAY);
-  return { start, site: q.get("site") ?? "B" };
+  if (!isNaN(s)) start = clampStart(s, +days * DAY);
+  const num = (k: string, lo: number, hi: number, def: number) => { const v = Number(q.get(k)); return q.get(k) != null && v >= lo && v <= hi ? v : def; };
+  let custom: Site | null = null;
+  const m = /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(q.get("site") ?? "");
+  if (m && Math.abs(+m[1]) <= 90 && +m[2] >= -180 && +m[2] <= 360) {
+    custom = { id: "X0", name: (q.get("name") ?? "").slice(0, 40) || `${m[1]}, ${m[2]}`, lat: +m[1], lon: +m[2] > 180 ? +m[2] - 360 : +m[2], model: "smooth", raised: 1000, mask: null, maskName: "" };
+  }
+  return { start, days, site: q.get("site"), custom, mission: num("mission", 1, 60, 10), mask: num("mask", -5, 10, 0) };
 }
 
 export function Planner() {
   const { t, raw, lang } = useI18n();
   const [init] = useState(initialFromUrl);
   // every site starts on its real LOLA skyline where one exists
-  const [sites, setSites] = useState<Site[]>(() => SITE_SEEDS.map(withTerrain));
-  const [selId, setSelId] = useState(() => (sites.some((s) => s.id === init.site) ? init.site : "B"));
+  const [sites, setSites] = useState<Site[]>(() => [...SITE_SEEDS.map(withTerrain), ...(init.custom ? [init.custom] : [])]);
+  const [selId, setSelId] = useState(() => {
+    if (init.custom) return init.custom.id;
+    const asked = sites.find((s) => s.id === init.site);
+    if (asked) return asked.id;
+    // No site asked for: open on the one with the most power and signal for these dates.
+    let best = sites[0], top = -1;
+    for (const s of sites) {
+      const both = stats(series(s, init.start, init.start + +init.days * DAY, 2 * HOUR), 0).both;
+      if (both > top) { top = both; best = s; }
+    }
+    return best.id;
+  });
   const [start, setStart] = useState(init.start);
-  const [spanDays, setSpanDays] = useState("60");
-  const [mission, setMission] = useState(10);
-  const [mask, setMask] = useState(0);
+  const [spanDays, setSpanDays] = useState<string>(init.days);
+  const [mission, setMission] = useState(init.mission);
+  const [mask, setMask] = useState(init.mask);
+  const [copied, setCopied] = useState(false);
+  const [link, setLink] = useState("");
   const [tm, setTm] = useState(init.start);
   const [playing, setPlaying] = useState(false);
   const [secsPerPeriod, setSecsPerPeriod] = useState(20);
@@ -120,12 +143,40 @@ export function Planner() {
     setCsvMsg(far ? { bad: true, text: t("p.csvFar", { lat: meta.lat, lon: meta.lon, site: site.name }) } : { bad: false, text: "✓ " + f.name });
   };
 
+  /* ---------- share and print ---------- */
+  const shareUrl = () => {
+    const own = site.id.startsWith("X");
+    const q = new URLSearchParams({ site: own ? `${site.lat},${site.lon}` : site.id, start: fmtD(start), days: spanDays });
+    if (own) q.set("name", site.name);
+    if (mission !== 10) q.set("mission", String(mission));
+    if (mask) q.set("mask", String(mask));
+    return `${location.origin}/planner?${q}`;
+  };
+  const copyLink = () => {
+    navigator.clipboard?.writeText(shareUrl()).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); }, () => {});
+  };
+  const printBrief = () => {
+    const root = document.documentElement, prev = root.getAttribute("data-theme");
+    setPlaying(false); setLink(shareUrl());
+    root.setAttribute("data-theme", "light"); // paper is white: redraw the charts in the light theme first
+    const restore = () => {
+      if (prev) root.setAttribute("data-theme", prev); else root.removeAttribute("data-theme");
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+    setTimeout(() => window.print(), 400);
+  };
 
   return (
     <main className="wrap">
-      <header className="page-head">
+      <header className="page-head no-print">
         <h1>{t("p2.title")}</h1>
         <p>{t("p2.intro")}</p>
+      </header>
+      <header className="print-only brief-head">
+        <h1>{t("p3.briefT")}: {site.name}</h1>
+        <p>{latlon(site)} · {fmtD(start)} → {fmtD(start + span)} · {t("p3.briefMission", { n: mission })}</p>
+        <p className="mono">{link}</p>
       </header>
 
       <div className="planner">
@@ -229,7 +280,12 @@ export function Planner() {
 
         {/* ---------- right: the answer, then the detail views ---------- */}
         <div className="stack">
-          <Verdict site={site} k={curStats} start={start} span={span} />
+          <Verdict site={site} k={curStats} start={start} span={span}>
+            <div className="row brief-actions no-print">
+              <button type="button" className="btn small" onClick={copyLink}>{copied ? "✓ " + t("p3.copied") : t("p3.share")}</button>
+              <button type="button" className="btn small" onClick={printBrief}>{t("p3.print")}</button>
+            </div>
+          </Verdict>
 
           <section className="panel">
             <SectionHead title={t("p2.skyT")} help={t("p2.skyH")}>
@@ -282,7 +338,7 @@ export function Planner() {
 }
 
 /* ---------- the answer ---------- */
-function Verdict({ site, k, start, span }: { site: Site; k: Stats; start: number; span: number }) {
+function Verdict({ site, k, start, span, children }: { site: Site; k: Stats; start: number; span: number; children?: React.ReactNode }) {
   const { t } = useI18n();
   const level = k.both >= 0.55 && k.maxDarkH <= 96 ? "great" : k.both >= 0.3 ? "ok" : "hard";
   const tag = { great: t("p2.vGreat"), ok: t("p2.vOk"), hard: t("p2.vHard") }[level];
@@ -301,6 +357,7 @@ function Verdict({ site, k, start, span }: { site: Site; k: Stats; start: number
       <p className={`horizon-note${site.model === "terrain" ? " on" : ""}`}>
         {site.model === "terrain" ? t("p2.terrainOn") : site.model === "raised" ? t("p2.terrainRaised", { h: site.raised }) : t("p2.terrainOff")}
       </p>
+      {children}
     </section>
   );
 }

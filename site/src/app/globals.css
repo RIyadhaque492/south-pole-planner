@@ -416,3 +416,17 @@ details.how > summary::-webkit-details-marker { display: none; }
 .explainer-card b { font-size: 17px; }
 .explainer-card p { margin: 4px 0 0; color: var(--muted); font-size: 15px; max-width: 75ch; }
 .ai-note { margin-top: 14px; }
+
+/* game: sound switch and the daily challenge */
+.game-hero-side { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.daily { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px 18px; align-items: center; width: 100%; margin-bottom: 16px; padding: 16px 20px; text-align: left; border: 2px solid color-mix(in srgb, var(--sun) 45%, var(--line)); border-radius: var(--radius); background: radial-gradient(120% 160% at 0% 0%, var(--sun-soft), transparent 60%), var(--panel); box-shadow: var(--shadow); transition: transform 0.2s, border-color 0.2s; }
+.daily:hover { transform: translateY(-2px); border-color: var(--sun); }
+.daily-ico { font-size: 34px; line-height: 1; }
+.daily-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.daily-body b { font: 600 1.25rem/1.2 var(--display); }
+.daily-body b .mono { font-size: 0.85rem; font-weight: 500; color: var(--muted); margin-left: 6px; }
+.daily-text { color: var(--muted); font-size: 14.5px; }
+.daily-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; white-space: nowrap; }
+.daily .best { font: 12px var(--mono); color: var(--sun); }
+.daily .go-arrow { font-weight: 600; color: var(--sun); }
+@media (max-width: 640px) { .daily { grid-template-columns: auto minmax(0, 1fr); } .daily-side { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; } }
