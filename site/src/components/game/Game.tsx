@@ -37,7 +37,8 @@ const EVENT_SFX: Record<string, Sfx> = {
 };
 const ICONS: Record<LogKind | "tip", string> = { sun: "☀️", earth: "🌍", bad: "⚠️", good: "✅", tip: "💡" };
 const TOGGLE_ICONS = { sci: "🔬", rad: "📡", hib: "😴" };
-const HOWTO_ICONS = ["🔬", "📡", "😴", "📅"];
+const STEP_ICONS = ["☀️", "🔬", "📡", "😴"];
+const HELP_KEY = "rts-howto-seen";
 const fmtHour = (ms: number) => { const d = new Date(ms); return `${fmtD(ms)} ${pad(d.getUTCHours())}:00 UTC`; };
 
 function useCanvas(draw: (cv: HTMLCanvasElement) => void, deps: unknown[]) {
@@ -50,8 +51,39 @@ function useCanvas(draw: (cv: HTMLCanvasElement) => void, deps: unknown[]) {
   return ref;
 }
 
+/** The four rules of the game, shown before the missions and again in the in-game help. */
+function HowSteps() {
+  const { t, raw } = useI18n();
+  return (
+    <>
+      <ol className="howto">
+        {raw<string[][]>("g3.steps").map(([a, b], k) => (
+          <li key={a}><span className="ico" aria-hidden="true">{STEP_ICONS[k]}</span><b><span className="n">{k + 1}</span>{a}</b><p>{b}</p></li>
+        ))}
+      </ol>
+      <p className="howto-rules"><span>🏆 {t("g3.win")}</span><span>🧊 {t("g3.lose")}</span></p>
+    </>
+  );
+}
+
+/** In-game help: the rules again, with this mission's goal on top. The clock waits while it is open. */
+function HelpDialog({ goal, first, onClose }: { goal: string; first: boolean; onClose: () => void }) {
+  const { t } = useI18n();
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => { if (!ref.current!.open) ref.current!.showModal(); }, []);
+  return (
+    <dialog ref={ref} className="help" aria-labelledby="help-title" onClose={onClose} onClick={(e) => { if (e.target === ref.current) onClose(); }}>
+      <h2 id="help-title" className="title">{t("g3.howT")}</h2>
+      <p className="help-goal"><b>{t("g3.goal")}:</b> {goal}</p>
+      <HowSteps />
+      <p className="hint">{t("g3.keys")}</p>
+      <button type="button" className="btn accent" autoFocus onClick={onClose}>{first ? "▶ " + t("g3.start") : t("g3.resume")}</button>
+    </dialog>
+  );
+}
+
 export function Game() {
-  const { t, raw, lang } = useI18n();
+  const { t, lang } = useI18n();
   const [screen, setScreen] = useState<Screen>("pick");
   const [frame, setFrame] = useState(0);
   const [speed, setSpeed] = useState(0);
@@ -63,6 +95,9 @@ export function Game() {
   const [bests, setBests] = useState<Record<string, number>>({});
   const [today, setToday] = useState("");
   const [snd, setSnd] = useState(true);
+  // The help opens by itself on a visitor's first mission; `first` is that opening, `resume` the speed to go back to.
+  const [help, setHelp] = useState<{ first: boolean; resume: number } | null>(null);
+  const seenHelp = useRef(false);
   // The simulation object is mutated in place by the animation loop (m.current); `mission` exposes it to render.
   const m = useRef<Mission | null>(null);
   const [mission, setMission] = useState<Mission | null>(null);
@@ -74,7 +109,10 @@ export function Game() {
   useEffect(() => {
     const b: Record<string, number> = {};
     const day = dayKey(Date.now());
-    try { for (const k of [...KEYS, "daily-" + day]) b[k] = +(localStorage.getItem(bestKey(k)) ?? 0) || 0; } catch {}
+    try {
+      for (const k of [...KEYS, "daily-" + day]) b[k] = +(localStorage.getItem(bestKey(k)) ?? 0) || 0;
+      seenHelp.current = !!localStorage.getItem(HELP_KEY);
+    } catch {}
     // eslint-disable-next-line react-hooks/set-state-in-effect -- scores, the date and the sound setting only exist in the browser
     setBests(b); setToday(day); setSnd(soundOn());
   }, []);
@@ -160,9 +198,18 @@ export function Game() {
     // The clock starts once the lander has touched down.
     setIntro(true);
     clearTimeout(introTimer.current);
-    introTimer.current = setTimeout(() => { setIntro(false); setSpeed(3); sfx("land"); }, reducedMotion() ? 400 : 1900);
+    introTimer.current = setTimeout(() => {
+      setIntro(false); sfx("land");
+      if (seenHelp.current) setSpeed(3); else setHelp({ first: true, resume: 3 });
+    }, reducedMotion() ? 400 : 1900);
   };
-  const quit = () => { clearTimeout(introTimer.current); setIntro(false); setSpeed(0); setScreen("pick"); };
+  const quit = () => { clearTimeout(introTimer.current); setIntro(false); setHelp(null); setSpeed(0); setScreen("pick"); };
+  const closeHelp = () => {
+    if (!help) return;
+    seenHelp.current = true;
+    try { localStorage.setItem(HELP_KEY, "1"); } catch {}
+    setHelp(null); setSpeed(help.resume);
+  };
   useEffect(() => () => clearTimeout(introTimer.current), []);
 
   useEffect(() => {
@@ -193,6 +240,12 @@ export function Game() {
 
       {screen === "pick" && (
         <section>
+          <div className="panel how-panel">
+            <h2 className="title">{t("g3.howT")}</h2>
+            <p className="sub">{t("g3.howSub")}</p>
+            <HowSteps />
+            <p className="hint">{t("g3.keys")}</p>
+          </div>
           <button type="button" className="daily" onClick={() => startMission("daily")}>
             <span className="daily-ico" aria-hidden="true">📅</span>
             <span className="daily-body">
@@ -225,11 +278,6 @@ export function Game() {
               );
             })}
           </div>
-          <div className="howto">
-            {raw<string[][]>("g.howto").map(([a, b], k) => (
-              <div key={a}><span className="ico" aria-hidden="true">{HOWTO_ICONS[k]}</span><span className="eyebrow">{a}</span><p>{b}</p></div>
-            ))}
-          </div>
           <PoleExplainer />
           <p className="hint ai-note">{t("g2.aiNote")}</p>
         </section>
@@ -251,8 +299,9 @@ export function Game() {
             else s.rad = !s.rad;
             rerender();
           }}
-          intro={intro} onAbort={quit} />
+          intro={intro} onAbort={quit} onHelp={() => { setHelp({ first: false, resume: speed }); setSpeed(0); }} />
       )}
+      {screen === "play" && mission && help && <HelpDialog goal={goalFor(mission.key, mission.sc)} first={help.first} onClose={closeHelp} />}
 
       {screen === "end" && mission && (
         <Debrief M={mission} lang={lang}
@@ -315,9 +364,9 @@ function Toggle({ id, on, label, sub, dis, hib, onToggle }: {
   );
 }
 
-function PlayScreen({ M, frame, speed, setSpeed, autoPause, setAutoPause, goal, intro, onToggle, onAbort }: {
+function PlayScreen({ M, frame, speed, setSpeed, autoPause, setAutoPause, goal, intro, onToggle, onAbort, onHelp }: {
   M: Mission; frame: number; speed: number; setSpeed: (v: number) => void; autoPause: boolean; setAutoPause: (v: boolean) => void;
-  goal: string; intro: boolean; onToggle: (w: "sci" | "rad" | "hib") => void; onAbort: () => void;
+  goal: string; intro: boolean; onToggle: (w: "sci" | "rad" | "hib") => void; onAbort: () => void; onHelp: () => void;
 }) {
   const { t, lang } = useI18n();
   const { sc, o, s } = M;
@@ -351,7 +400,10 @@ function PlayScreen({ M, frame, speed, setSpeed, autoPause, setAutoPause, goal, 
     <section>
       <div className="goalbar">
         <span><b className="scn-name">{t(`g.scn.${M.key}.t`)}</b> · {sc.site.name} · <span className="muted">{t("g.goal")}:</span> {goal}</span>
-        <button type="button" className="btn small" onClick={onAbort}>{t("g.abort")}</button>
+        <span className="row">
+          <button type="button" className="btn small" disabled={intro} onClick={onHelp}><span aria-hidden="true">❓</span> {t("g3.howT")}</button>
+          <button type="button" className="btn small" onClick={onAbort}>{t("g.abort")}</button>
+        </span>
       </div>
       <div className="game">
         <div className="stack">

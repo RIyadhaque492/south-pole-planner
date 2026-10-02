@@ -3,6 +3,7 @@ import { Hind_Siliguri, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { LangProvider } from "@/lib/i18n";
 import { OfflineReady } from "@/components/OfflineReady";
 import { SiteHeader } from "@/components/SiteHeader";
+import { LunaWidget } from "@/components/ask/LunaWidget";
 import "./globals.css";
 import "./landing.css";
 import "./ui.css";
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <OfflineReady />
           <SiteHeader />
           {children}
+          <LunaWidget />
         </LangProvider>
       </body>
     </html>

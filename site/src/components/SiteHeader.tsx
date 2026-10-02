@@ -42,7 +42,7 @@ function ThemeToggle() {
 export function SiteHeader() {
   const { t, lang, setLang } = useI18n();
   const path = usePathname();
-  const at = path?.startsWith("/game") ? "game" : path?.startsWith("/planner") ? "planner" : path?.startsWith("/missions") ? "missions" : "home";
+  const at = path?.startsWith("/game") ? "game" : path?.startsWith("/planner") ? "planner" : path?.startsWith("/missions") ? "missions" : path?.startsWith("/ask") ? "ask" : "home";
   return (
     <header className="topbar">
       <div className="topbar-in">
@@ -52,6 +52,7 @@ export function SiteHeader() {
           <Link href="/planner" aria-current={at === "planner" ? "page" : undefined}>{t("nav.planner")}</Link>
           <Link href="/missions" aria-current={at === "missions" ? "page" : undefined}>{t("nav.missions")}</Link>
           <Link href="/game" aria-current={at === "game" ? "page" : undefined}>{t("nav.game")}</Link>
+          <Link href="/ask" aria-current={at === "ask" ? "page" : undefined}>{t("nav.ask")}</Link>
         </nav>
         <div className="topbar-tools">
           <div className="seg" role="group" aria-label="Language">

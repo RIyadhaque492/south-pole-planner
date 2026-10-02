@@ -7,7 +7,8 @@ import { useAnimCanvas } from "@/lib/canvas";
 import { useI18n } from "@/lib/i18n";
 import { MISSIONS, replay, type Mission, type Replay } from "@/lib/missions";
 import { SectionHead } from "@/components/ui";
-import { drawSkyNow } from "@/components/game/art";
+import { drawSkyNow, type Mood } from "@/components/game/art";
+import { Mascot } from "@/components/game/Mascot";
 import { TimeBar, type Run } from "@/components/TimeBar";
 
 /** [start, length] of every stretch where `test` holds. */
@@ -21,6 +22,32 @@ function runs(n: number, test: (i: number) => boolean) {
   return out;
 }
 const sunUp = (o: Series, i: number) => o.sFrac[i] >= 0.5, earthUp = (o: Series, i: number) => o.eEl[i] >= 0;
+
+/** One step of a mission's story: the sample it jumps to, and the dictionary key of its title and text. */
+interface Chapter { id: string; at: number; ico: string; mood: Mood; key: string }
+
+/** The story of a mission as moments on its replay, in time order. */
+function chapters(r: Replay): Chapter[] {
+  const { m, o } = r, perDay = DAY / o.step;
+  const at = (ms: number) => Math.round((ms - o.t0) / o.step);
+  const ch = (id: string, i: number, ico: string, mood: Mood): Chapter => ({ id, at: Math.min(o.n - 1, i), ico, mood, key: `m.${m.id}.story.${id}` });
+  const over = r.iEnd + 1; // the first sample after last contact
+  const list: Chapter[] = [{ id: "way", at: 0, ico: "🚀", mood: "awake", key: "m.way" }];
+  if (m.id === "bg1") {
+    if (r.sunrise) list.push(ch("rise", at(r.sunrise), "🌅", "awake"));
+    list.push(ch("land", r.iLand, "🛬", "happy"));
+    if (r.eclipse) list.push(ch("eclipse", at((r.eclipse[0] + r.eclipse[1]) / 2), "🌑", "worry"));
+    if (r.sunset) list.push(ch("set", at(r.sunset), "🌙", "worry"));
+    list.push(ch("end", over, "💤", "sleep"));
+  } else if (m.id === "im1") {
+    list.push(ch("land", r.iLand, "🛬", "worry"), ch("lean", r.iLand + 3 * perDay, "📸", "awake"), ch("end", over, "🔋", "sleep"));
+    if (r.sunset) list.push(ch("set", at(r.sunset), "🌙", "sleep"));
+  } else {
+    list.push(ch("land", r.iLand, "🛬", "worry"), ch("side", r.iLand + perDay / 8, "🕳️", "worry"), ch("end", over, "🔋", "sleep"));
+  }
+  // a step that would not come after the one before it is left out
+  return list.filter((c, k) => k === 0 || c.at > list[k - 1].at);
+}
 
 export function Missions() {
   const { t, lang } = useI18n();
@@ -51,7 +78,8 @@ export function Missions() {
 function Replayer({ r }: { r: Replay }) {
   const { t, dur, lang } = useI18n();
   const { m, o } = r;
-  const [i, setI] = useState(r.iLand);
+  const story = useMemo(() => chapters(r), [r]);
+  const [i, setI] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   useEffect(() => {
@@ -66,6 +94,11 @@ function Replayer({ r }: { r: Replay }) {
     sunEl: o.sEl[i], sunAz: o.sAz[i], earthEl: o.eEl[i], earthAz: o.eAz[i], power, link, center: o.eAz[r.iLand],
     tilt: m.tilt, over, lander: landed,
   }, { sun: t("sun"), earth: t("earth"), exag: (k) => t("g.exag", { k }), below: t("l3.below"), hill: t("l3.hill") }, now), [r, i, lang]);
+
+  // The story follows the clock: scrubbing or playing past a step shows that step.
+  const step = story.reduce((best, c, k) => (i >= c.at ? k : best), 0), ch = story[step], last = step === story.length - 1;
+  const go = (k: number) => { setPlaying(false); setI(story[k].at); };
+  const vars = { name: m.lander, sun: r.sunAtLanding.toFixed(1), earth: r.earthAtLanding.toFixed(1) };
 
   const ms = (k: number) => o.t0 + k * o.step;
   const hours = (a: number, b: number) => dur(Math.abs(a - b) / HOUR);
@@ -86,9 +119,28 @@ function Replayer({ r }: { r: Replay }) {
         <div className="board-facts">
           <div className="board-title"><h3>{m.lander}</h3><span className={`badge ${landed && !over && power ? "ready" : over ? "off" : "warn"}`}>{state}</span></div>
           <p className="mission-where mono">{m.place} · {latlon(m)}</p>
-          <p className="mission-text">{t(`m.${m.id}.what`)}</p>
-          <div className="row">
-            <Link href={`/planner?site=${m.lat},${m.lon}&name=${encodeURIComponent(m.name)}&start=${fmtD(m.land)}`} className="btn small">{t("m.open")} →</Link>
+          <div className="tale" key={ch.id} aria-live="polite">
+            <Mascot mood={ch.mood} height={104} />
+            <div>
+              <span className="tale-n">{t("m.stepOf", { n: step + 1, total: story.length })}</span>
+              <b><span aria-hidden="true">{ch.ico}</span> {t(`${ch.key}.t`)}</b>
+              <p>{t(`${ch.key}.d`, vars)}</p>
+            </div>
+          </div>
+          {landed && !over && (
+            <div className="tale-lamps">
+              <span className={`sun${power ? " on" : ""}`}><span aria-hidden="true">☀️</span> {t(power ? "w.pOn" : "w.pOff")}</span>
+              <span className={`earth${link ? " on" : ""}`}><span aria-hidden="true">📡</span> {t(link ? "w.rOn" : "w.rOff")}</span>
+            </div>
+          )}
+          <div className="tale-nav">
+            <button type="button" className="btn" disabled={step === 0} onClick={() => go(step - 1)}>← {t("m.back")}</button>
+            <div className="tale-dots" role="group" aria-label={t("m.storyNav")}>
+              {story.map((c, k) => (
+                <button key={c.id} type="button" className={k < step ? "done" : ""} aria-pressed={k === step} aria-label={t(`${c.key}.t`)} title={t(`${c.key}.t`)} onClick={() => go(k)}>{c.ico}</button>
+              ))}
+            </div>
+            <button type="button" className="btn accent" onClick={() => go(last ? 0 : step + 1)}>{last ? `↺ ${t("m.restart")}` : `${t("m.next")} →`}</button>
           </div>
         </div>
         <div className="board-time">
@@ -106,20 +158,58 @@ function Replayer({ r }: { r: Replay }) {
         </div>
       </div>
 
-      <div className="two">
-        <section className="panel">
-          <SectionHead title={t("m.checkT")} help={t("m.checkH")} />
-          <dl className="mission-facts">
-            {facts.map(([k, v, note]) => (
-              <div key={k}><dt>{k}</dt><dd><b className="mono">{v}</b>{note && <small>{note}</small>}</dd></div>
-            ))}
-          </dl>
-        </section>
-        <section className="panel">
-          <SectionHead title={t("m.showsT")} />
-          <p className="mission-text">{t(`m.${m.id}.shows`, { sun: r.sunAtLanding.toFixed(1), earth: r.earthAtLanding.toFixed(1) })}</p>
-        </section>
-      </div>
+      <Quiz id={m.id} vars={vars} />
+
+      <details className="more panel">
+        <summary>{t("m.numbersT")}</summary>
+        <div className="two numbers">
+          <section>
+            <SectionHead title={t("m.checkT")} help={t("m.checkH")} />
+            <dl className="mission-facts">
+              {facts.map(([k, v, note]) => (
+                <div key={k}><dt>{k}</dt><dd><b className="mono">{v}</b>{note && <small>{note}</small>}</dd></div>
+              ))}
+            </dl>
+          </section>
+          <section>
+            <SectionHead title={t("m.showsT")} />
+            <p className="mission-text">{t(`m.${m.id}.what`)}</p>
+            <p className="mission-text">{t(`m.${m.id}.shows`, vars)}</p>
+            <div className="row">
+              <Link href={`/planner?site=${m.lat},${m.lon}&name=${encodeURIComponent(m.name)}&start=${fmtD(m.land)}`} className="btn small">{t("m.open")} →</Link>
+            </div>
+          </section>
+        </div>
+      </details>
     </>
+  );
+}
+
+/** Which answer is the right one, by its place in the dictionary's list. */
+const ANSWER: Record<Mission["id"], number> = { im1: 0, bg1: 1, im2: 2 };
+
+/** One question about the mission. A wrong answer can be tried again; the right one explains itself. */
+function Quiz({ id, vars }: { id: Mission["id"]; vars: Record<string, string> }) {
+  const { t, raw } = useI18n();
+  const [picked, setPicked] = useState<number[]>([]);
+  const right = ANSWER[id], solved = picked.includes(right);
+  return (
+    <section className="panel quiz">
+      <SectionHead title={`🤔 ${t("m.quizT")}`} />
+      <p className="quiz-q">{t(`m.${id}.quiz.q`, vars)}</p>
+      <div className="quiz-a">
+        {raw<string[]>(`m.${id}.quiz.a`).map((a, k) => {
+          const mark = !picked.includes(k) ? "" : k === right ? "right" : "wrong";
+          return (
+            <button key={a} type="button" className={`quiz-btn ${mark}`} disabled={solved || mark === "wrong"} onClick={() => setPicked((p) => [...p, k])}>
+              <span className="quiz-mark" aria-hidden="true">{mark === "right" ? "✅" : mark === "wrong" ? "❌" : "ABC"[k]}</span>{a}
+            </button>
+          );
+        })}
+      </div>
+      <p className={`quiz-msg ${solved ? "right" : "wrong"}`} aria-live="polite">
+        {solved ? <><b>{t("m.right")}</b> {t(`m.${id}.quiz.why`)}</> : picked.length ? t("m.wrong") : ""}
+      </p>
+    </section>
   );
 }

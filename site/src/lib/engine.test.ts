@@ -6,6 +6,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { DAY, HOUR, T_MAX, T_MIN, series, setGeometry, stats, subLongitudes, type Series } from "./ephemeris";
 import { SCENARIOS, dayKey, simulate } from "./game";
 import { MISSIONS, replay } from "./missions";
+import { runTool } from "./server/luna";
+import { skyNow } from "./sky";
 import { SITE_SEEDS, makeSite, seedById } from "./sites";
 import { setTerrain, withTerrain, type TerrainBundle } from "./terrain";
 
@@ -143,5 +145,29 @@ describe("daily challenge", () => {
     const week = Array.from({ length: 7 }, (_, k) => SCENARIOS.daily.build(undefined, noon + k * DAY));
     expect(new Set(week.map((s) => s.site.id + s.land)).size).toBeGreaterThan(3);
     for (const s of week) expect(s.stars[2]).toBeGreaterThanOrEqual(s.stars[0]);
+  });
+});
+
+describe("Luna's tools", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tool results are plain JSON for the model
+  const call = (name: string, input: Record<string, unknown>): any => runTool(name, input);
+
+  it("answer from the same engine as the pages", () => {
+    const now = call("sites_now", { time: "2026-12-01T00:00:00Z" });
+    expect(now.sites).toHaveLength(SITE_SEEDS.length);
+    const b = skyNow(seedById("B"), Date.UTC(2026, 11, 1));
+    expect(now.sites.find((s: { id: string }) => s.id === "B").hasSunlightForPower).toBe(b.power);
+
+    const cmp = call("compare_sites", { start: "2026-12-01", days: 30 });
+    const best = cmp.sites.map((s: { powerAndRadioTogetherPercent: number }) => s.powerAndRadioTogetherPercent);
+    expect(best).toEqual([...best].sort((x, y) => y - x));
+
+    const one = call("site_outlook", { site: "shackleton ridge", start: "2026-12-01", days: 30 });
+    expect(one.id).toBe("B");
+    expect(one.powerAndRadioTogetherPercent).toBe(cmp.sites.find((s: { id: string }) => s.id === "B").powerAndRadioTogetherPercent);
+    expect(call("site_outlook", { site: "nowhere", days: 5 }).error).toContain("Unknown site");
+    expect(call("no_such_tool", {}).error).toBeDefined();
+
+    expect(call("real_missions", {}).missions.map((m: { lander: string }) => m.lander)).toEqual(MISSIONS.map((m) => m.lander));
   });
 });

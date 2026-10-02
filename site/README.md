@@ -23,6 +23,19 @@ the server reads it from disk.
 | `/game` | client | Race the Shadow |
 | `/api/now` | per request | Sun and Earth at every site now (`?t=ISO` for another moment) |
 | `/api/sky` | per request | `?site=B&start=2026-12-01&days=30`: stats, rise/set events, elevation trace. `site` can be `lat,lon` |
+| `/ask` | client | Ask Luna: a child-friendly AI guide that answers questions about the south pole |
+| `/api/ask` | per request | `POST`: Luna's answer. Gemini calls the sky engine through tools, so its numbers are the Planner's |
+
+Ask Luna needs a Google Gemini API key on the server. A free one from https://aistudio.google.com/apikey works
+(no card needed; the free tier has per-minute and per-day limits, and Google may use free-tier prompts to improve
+its products). Put it in `site/.env.local` (not committed) and restart:
+
+```bash
+GEMINI_API_KEY=...
+# GEMINI_MODEL=gemini-3.8-flash   # optional: another model with a free tier
+```
+
+Without a key the page still loads and tells the visitor that Luna is not switched on. The rest of the app does not use it.
 
 ## Layout
 
@@ -31,6 +44,7 @@ the server reads it from disk.
 | `src/lib/ephemeris.ts` | Sun/Earth geometry engine (DE421 table lookup, horizon models, stats) |
 | `src/lib/sky.ts` | "Right now" and outlook queries shared by pages and API routes |
 | `src/lib/server/geometry.ts` | Loads the ephemeris table from disk on the server |
+| `src/lib/server/luna.ts` | Ask Luna: the prompt, and the tools that let Gemini query the engine |
 | `src/lib/game.ts` | Game rules and balance numbers (`CFG`), scenarios, simulation |
 | `src/lib/dict.ts` | All UI text, English and Bengali |
 | `src/components/landing/` | Terrain hero (procedural relief, real lighting, sweep-line shadows), live board |
