@@ -42,13 +42,14 @@ function ThemeToggle() {
 export function SiteHeader() {
   const { t, lang, setLang } = useI18n();
   const path = usePathname();
-  const at = path?.startsWith("/game") ? "game" : path?.startsWith("/planner") ? "planner" : path?.startsWith("/missions") ? "missions" : path?.startsWith("/ask") ? "ask" : "home";
+  const at = path?.startsWith("/game") ? "game" : path?.startsWith("/planner") ? "planner" : path?.startsWith("/missions") ? "missions" : path?.startsWith("/ask") ? "ask" : path?.startsWith("/adventure") ? "adv" : "home";
   return (
     <header className="topbar">
       <div className="topbar-in">
         <Link href="/" className="brand"><MoonMark /><span>{t("brand")}</span><small className="brand-tag">{t("tagline")}</small></Link>
         <nav className="tabs" aria-label="Sections">
           <Link href="/" aria-current={at === "home" ? "page" : undefined}>{t("nav.home")}</Link>
+          <Link href="/adventure" aria-current={at === "adv" ? "page" : undefined}>🚀 {t("nav.adv")}</Link>
           <Link href="/planner" aria-current={at === "planner" ? "page" : undefined}>{t("nav.planner")}</Link>
           <Link href="/missions" aria-current={at === "missions" ? "page" : undefined}>{t("nav.missions")}</Link>
           <Link href="/game" aria-current={at === "game" ? "page" : undefined}>{t("nav.game")}</Link>
