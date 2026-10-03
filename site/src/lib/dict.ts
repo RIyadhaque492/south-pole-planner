@@ -3,7 +3,7 @@
 import { es } from "./dict-es";
 
 const en = {
-  brand: "Mission Moonlight",
+  brand: "Hyphen", tagline: "Mission Moonlight",
   nav: { home: "Overview", planner: "Planner", game: "Race the Shadow", missions: "Missions", ask: "Ask Hyphen AI" },
   theme: { toLight: "Switch to light theme", toDark: "Switch to dark theme" },
   loading: "Loading the JPL ephemeris…",
@@ -389,7 +389,7 @@ const en = {
 export type Dict = typeof en;
 
 const bn: Dict = {
-  brand: "মিশন মুনলাইট",
+  brand: "হাইফেন", tagline: "মিশন মুনলাইট",
   nav: { home: "সারসংক্ষেপ", planner: "প্ল্যানার", game: "ছায়ার সাথে দৌড়", missions: "মিশন", ask: "হাইফেন এআই-কে জিজ্ঞেস করো" },
   theme: { toLight: "হালকা থিমে যাও", toDark: "গাঢ় থিমে যাও" },
   loading: "JPL ephemeris লোড হচ্ছে…",

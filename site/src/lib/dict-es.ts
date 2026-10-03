@@ -4,7 +4,7 @@ import type { Dict } from "./dict";
 type DeepPartial<T> = T extends unknown[] ? T : T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
 
 export const es: DeepPartial<Dict> = {
-  brand: "Mission Moonlight",
+  brand: "Hyphen", tagline: "Misión Moonlight",
   nav: { home: "Resumen", planner: "Planificador", game: "Corre contra la sombra", missions: "Misiones", ask: "Pregunta a Hyphen AI" },
   theme: { toLight: "Cambiar a tema claro", toDark: "Cambiar a tema oscuro" },
   loading: "Cargando las efemérides de JPL…",

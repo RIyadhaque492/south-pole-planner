@@ -13,7 +13,7 @@ const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], style: 
 const bengali = Hind_Siliguri({ subsets: ["bengali", "latin"], weight: ["400", "500", "600"], variable: "--font-bn" });
 
 export const metadata: Metadata = {
-  title: { default: "Mission Moonlight", template: "%s · Mission Moonlight" },
+  title: { default: "Hyphen · Mission Moonlight", template: "%s · Hyphen" },
   description:
     "Compare Moon south-pole landing sites and dates: see when a lander has sunlight for power and Earth in view for direct-to-Earth radio, from NASA JPL DE421.",
 };

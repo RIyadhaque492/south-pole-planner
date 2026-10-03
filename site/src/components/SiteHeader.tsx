@@ -46,7 +46,7 @@ export function SiteHeader() {
   return (
     <header className="topbar">
       <div className="topbar-in">
-        <Link href="/" className="brand"><MoonMark /><span>{t("brand")}</span></Link>
+        <Link href="/" className="brand"><MoonMark /><span>{t("brand")}</span><small className="brand-tag">{t("tagline")}</small></Link>
         <nav className="tabs" aria-label="Sections">
           <Link href="/" aria-current={at === "home" ? "page" : undefined}>{t("nav.home")}</Link>
           <Link href="/planner" aria-current={at === "planner" ? "page" : undefined}>{t("nav.planner")}</Link>
