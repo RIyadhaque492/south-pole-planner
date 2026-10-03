@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 // Lets the site be installed on a phone or classroom computer; public/sw.js makes it work offline.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "South Pole Window Planner",
-    short_name: "Pole Window",
+    name: "Mission Moonlight",
+    short_name: "Moonlight",
     description: "Plan Moon south-pole landings and play Race the Shadow, on real NASA JPL sky data.",
     start_url: "/",
     display: "standalone",
