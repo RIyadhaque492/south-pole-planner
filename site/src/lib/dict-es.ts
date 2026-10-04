@@ -5,7 +5,7 @@ type DeepPartial<T> = T extends unknown[] ? T : T extends object ? { [K in keyof
 
 export const es: DeepPartial<Dict> = {
   brand: "Hyphen", tagline: "Misión Moonlight",
-  nav: { home: "Resumen", planner: "Planificador", game: "Corre contra la sombra", missions: "Misiones", ask: "Pregunta a Hyphen AI", adv: "Misión Lunar" },
+  nav: { home: "Resumen", planner: "Planificador", game: "Corre contra la sombra", missions: "Misiones", ask: "Pregunta a Hyphen AI", adv: "Aventura Lunar" },
   theme: { toLight: "Cambiar a tema claro", toDark: "Cambiar a tema oscuro" },
   loading: "Cargando las efemérides de JPL…",
   loadFail: "No se pudieron cargar los datos del cielo. Recarga la página para intentarlo de nuevo.",
@@ -349,7 +349,8 @@ export const es: DeepPartial<Dict> = {
     shipsD: { rocket: "Un cohete clásico con tres ventanas redondas.", shuttle: "Un avión espacial montado en un tanque gigante.", future: "Un cohete elegante del futuro." },
     next: "Siguiente", back: "Atrás", go: "¡Empieza la misión!", ok: "¡Vale!",
     suitUp: "Poniéndote el traje…",
-    voice: "Leer en voz alta", sound: "Sonido", skip: "Saltar",
+    voice: "Leer en voz alta", sound: "Sonido", skip: "Saltar", lang: "Idioma",
+    noVoice: "Este dispositivo no tiene una voz en español, así que Control de Misión solo mostrará el texto.",
     hold: "MANTÉN", fire: "ENCENDER", drop: "SOLTAR", brake: "FRENAR", thrust: "EMPUJE", photo: "FOTO", jump: "SALTAR", plant: "PLANTAR",
     alt: "Altura", speed: "Velocidad", kmh: "{n} km/h", ms: "{n} m/s", m: "{n} m", km: "{n} km",
     toMoon: "Hasta la Luna", day: "Día {n}",
@@ -371,6 +372,8 @@ export const es: DeepPartial<Dict> = {
       waterDone: "¡Glup! Los astronautas de verdad beben así.",
       rocks: "¡Oh, no, rocas espaciales! ¡Tócalas para apartarlas!",
       rocksDone: "¡Uf! ¡Muy bien pilotado, {name}!",
+      gaze: "{name} flota hasta la ventana y pega la nariz al cristal…",
+      galaxy: "¡Guau! Ese río brillante de estrellas es nuestra galaxia, la Vía Láctea. Tiene más de 100 mil millones de estrellas, ¡y nuestro Sol es solo una de ellas!",
       lookBack: "¡Mira atrás! La Tierra se ve cada vez más pequeña. El viaje a la Luna dura unos 3 días.",
       wave: "¡Toca la Tierra para decirle adiós!",
       waved: "¡Adiós, Tierra! ¡Hasta pronto!",
@@ -397,7 +400,7 @@ export const es: DeepPartial<Dict> = {
     cert: {
       title: "Certificado de alunizaje", line: "Se certifica que", did: "voló de la Tierra a la Luna y alunizó cerca del polo sur lunar.",
       date: "Fecha", ship: "Cohete", site: "Lugar de alunizaje", signed: "Control de Misión",
-      download: "Descargar certificado", again: "Volar otra vez", game: "Después: mantén vivo tu módulo en Corre contra la sombra",
+      download: "Descargar certificado", again: "Volar otra vez", home: "Volver a Hyphen", game: "Después: mantén vivo tu módulo en Corre contra la sombra",
     },
     lite: "Tu dispositivo va lento, así que usamos un 3D más sencillo.",
     no3d: "Este dispositivo no puede mostrar la parte 3D de la misión. Prueba con otro navegador u ordenador.",

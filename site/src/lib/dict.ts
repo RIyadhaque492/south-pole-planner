@@ -4,7 +4,7 @@ import { es } from "./dict-es";
 
 const en = {
   brand: "Hyphen", tagline: "Mission Moonlight",
-  nav: { home: "Overview", planner: "Planner", game: "Race the Shadow", missions: "Missions", ask: "Ask Hyphen AI", adv: "Moon Mission" },
+  nav: { home: "Overview", planner: "Planner", game: "Race the Shadow", missions: "Missions", ask: "Ask Hyphen AI", adv: "Adventure Moon" },
   theme: { toLight: "Switch to light theme", toDark: "Switch to dark theme" },
   loading: "Loading the JPL ephemeris…",
   loadFail: "Couldn't load the sky data. Reload the page to try again.",
@@ -405,7 +405,8 @@ const en = {
     shipsD: { rocket: "A classic rocket with three round windows.", shuttle: "A space plane riding a giant fuel tank.", future: "A sleek rocket from the future." },
     next: "Next", back: "Back", go: "Start the mission!", ok: "OK!",
     suitUp: "Suiting up…",
-    voice: "Read aloud", sound: "Sound", skip: "Skip",
+    voice: "Read aloud", sound: "Sound", skip: "Skip", lang: "Language",
+    noVoice: "This device has no English voice installed, so Mission Control will only show the words.",
     hold: "HOLD", fire: "FIRE", drop: "DROP", brake: "BRAKE", thrust: "THRUST", photo: "PHOTO", jump: "JUMP", plant: "PLANT FLAG",
     alt: "Height", speed: "Speed", kmh: "{n} km/h", ms: "{n} m/s", m: "{n} m", km: "{n} km",
     toMoon: "To the Moon", day: "Day {n}",
@@ -427,6 +428,8 @@ const en = {
       waterDone: "Slurp! Astronauts really drink their water this way.",
       rocks: "Uh-oh, space rocks ahead! Tap them to push them out of the way!",
       rocksDone: "Phew! Great flying, {name}!",
+      gaze: "{name} floats over to the window and presses their nose to the glass…",
+      galaxy: "Wow! That glowing river of stars is our galaxy, the Milky Way. It holds more than 100 billion stars, and our Sun is just one of them!",
       lookBack: "Look back! Earth is getting smaller and smaller. The trip to the Moon takes about 3 days.",
       wave: "Tap Earth to wave goodbye!",
       waved: "Bye-bye, Earth! See you soon!",
@@ -453,7 +456,7 @@ const en = {
     cert: {
       title: "Moon Landing Certificate", line: "This certifies that", did: "flew from Earth to the Moon and landed near the lunar south pole.",
       date: "Date", ship: "Rocket", site: "Landing site", signed: "Mission Control",
-      download: "Download certificate", again: "Fly again", game: "Next: keep your lander alive in Race the Shadow",
+      download: "Download certificate", again: "Fly again", home: "Back to Hyphen", game: "Next: keep your lander alive in Race the Shadow",
     },
     lite: "Your device is busy, so we switched to simpler 3D.",
     no3d: "This device can’t show the 3D part of the mission. Try another browser or computer.",
@@ -464,7 +467,7 @@ export type Dict = typeof en;
 
 const bn: Dict = {
   brand: "হাইফেন", tagline: "মিশন মুনলাইট",
-  nav: { home: "সারসংক্ষেপ", planner: "প্ল্যানার", game: "ছায়ার সাথে দৌড়", missions: "মিশন", ask: "হাইফেন এআই-কে জিজ্ঞেস করো", adv: "চাঁদ অভিযান" },
+  nav: { home: "সারসংক্ষেপ", planner: "প্ল্যানার", game: "ছায়ার সাথে দৌড়", missions: "মিশন", ask: "হাইফেন এআই-কে জিজ্ঞেস করো", adv: "চাঁদের অ্যাডভেঞ্চার" },
   theme: { toLight: "হালকা থিমে যাও", toDark: "গাঢ় থিমে যাও" },
   loading: "JPL ephemeris লোড হচ্ছে…",
   loadFail: "আকাশের ডেটা লোড হয়নি। আবার চেষ্টা করতে পেজটা রিলোড করো।",
@@ -864,7 +867,8 @@ const bn: Dict = {
     shipsD: { rocket: "তিনটে গোল জানালাওয়ালা ক্লাসিক রকেট।", shuttle: "বিশাল জ্বালানি ট্যাংকে চড়া একটা মহাকাশ-বিমান।", future: "ভবিষ্যতের ঝকঝকে রকেট।" },
     next: "পরের ধাপ", back: "পেছনে", go: "মিশন শুরু করো!", ok: "ঠিক আছে!",
     suitUp: "স্যুট পরা হচ্ছে…",
-    voice: "জোরে পড়ে শোনাও", sound: "শব্দ", skip: "বাদ দাও",
+    voice: "জোরে পড়ে শোনাও", sound: "শব্দ", skip: "বাদ দাও", lang: "ভাষা",
+    noVoice: "এই ডিভাইসে বাংলা কণ্ঠ নেই, তাই মিশন কন্ট্রোল শুধু লেখা দেখাবে। Microsoft Edge বা Android-এর Chrome-এ বাংলা কণ্ঠ শোনা যায়।",
     hold: "চেপে ধরো", fire: "চালু করো", drop: "ফেলে দাও", brake: "ব্রেক", thrust: "থ্রাস্ট", photo: "ছবি তোলো", jump: "লাফ দাও", plant: "পতাকা পোঁতো",
     alt: "উচ্চতা", speed: "গতি", kmh: "{n} কিমি/ঘণ্টা", ms: "{n} মি/সে", m: "{n} মি", km: "{n} কিমি",
     toMoon: "চাঁদ পর্যন্ত", day: "দিন {n}",
@@ -886,6 +890,8 @@ const bn: Dict = {
       waterDone: "চুমুক! নভোচারীরা সত্যিই এভাবে পানি খান।",
       rocks: "ওহ না, সামনে মহাকাশের পাথর! ছুঁয়ে ছুঁয়ে সরিয়ে দাও!",
       rocksDone: "উফ! দারুণ চালিয়েছ, {name}!",
+      gaze: "{name} ভেসে ভেসে জানালার কাছে গিয়ে কাচে নাক ঠেকিয়ে বাইরে তাকাল…",
+      galaxy: "বাহ! তারার ওই উজ্জ্বল নদীটাই আমাদের ছায়াপথ, মিল্কিওয়ে। এতে ১০ হাজার কোটিরও বেশি তারা আছে, আর আমাদের সূর্য তার মধ্যে মাত্র একটা!",
       lookBack: "পেছনে তাকাও! পৃথিবী ছোট থেকে ছোট হচ্ছে। চাঁদে যেতে প্রায় ৩ দিন লাগে।",
       wave: "পৃথিবীকে বিদায় জানাতে পৃথিবীটা ছোঁও!",
       waved: "টাটা, পৃথিবী! শীঘ্রই দেখা হবে!",
@@ -912,7 +918,7 @@ const bn: Dict = {
     cert: {
       title: "চাঁদে অবতরণের সার্টিফিকেট", line: "এই মর্মে জানানো হচ্ছে যে", did: "পৃথিবী থেকে চাঁদে উড়ে গিয়ে চাঁদের দক্ষিণ মেরুর কাছে অবতরণ করেছে।",
       date: "তারিখ", ship: "রকেট", site: "অবতরণের জায়গা", signed: "মিশন কন্ট্রোল",
-      download: "সার্টিফিকেট ডাউনলোড করো", again: "আবার ওড়ো", game: "এরপর: 'ছায়ার সাথে দৌড়'-এ ল্যান্ডারকে বাঁচিয়ে রাখো",
+      download: "সার্টিফিকেট ডাউনলোড করো", again: "আবার ওড়ো", home: "হাইফেনে ফিরে যাও", game: "এরপর: 'ছায়ার সাথে দৌড়'-এ ল্যান্ডারকে বাঁচিয়ে রাখো",
     },
     lite: "তোমার ডিভাইস ব্যস্ত, তাই সহজ ৩ডি চালু করা হলো।",
     no3d: "এই ডিভাইসে মিশনের ৩ডি অংশ দেখানো যাচ্ছে না। অন্য ব্রাউজার বা কম্পিউটারে চেষ্টা করো।",

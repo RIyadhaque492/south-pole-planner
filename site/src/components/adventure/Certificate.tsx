@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { sfx } from "@/lib/sound";
-import { flagImg, kidFace, suitImg, type Crew } from "./data";
+import { flagImg, kidFace, suitFace, type Crew } from "./data";
 import type { Landing } from "./Flight";
 
 const load = (src: string) => new Promise<HTMLImageElement | null>((ok) => {
@@ -30,7 +30,7 @@ async function draw(crew: Crew, landing: Landing, t: (k: string, v?: Record<stri
   c.width = W; c.height = H;
   const g = c.getContext("2d")!;
   const font = getComputedStyle(document.body).fontFamily;
-  const [face, suit, flag, photo] = await Promise.all([load(kidFace(crew.kid)), load(suitImg(crew.suit, "salute")), load(flagImg(crew.flag)), load(landing.photo)]);
+  const [face, suit, flag, photo] = await Promise.all([load(kidFace(crew.kid)), suitFace(crew.suit, crew.kid, "salute").then(load), load(flagImg(crew.flag)), load(landing.photo)]);
 
   // Night sky with stars and a gold frame.
   const bg = g.createLinearGradient(0, 0, W, H);
@@ -122,6 +122,7 @@ export function Certificate({ crew, landing, onAgain }: { crew: Crew; landing: L
         <button type="button" className="mm-btn mm-go big" onClick={save} disabled={!url}>⬇ {t("adv.cert.download")}</button>
         <button type="button" className="mm-btn ghost" onClick={onAgain}>↺ {t("adv.cert.again")}</button>
         <Link className="mm-btn ghost" href="/game">{t("adv.cert.game")} →</Link>
+        <Link className="mm-btn ghost" href="/">⌂ {t("adv.cert.home")}</Link>
       </div>
     </div>
   );

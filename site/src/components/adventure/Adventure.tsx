@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { setRoar, setSound, soundOn } from "@/lib/sound";
-import { saveVoicePref, voicePref } from "./Bubble";
+import { canSpeak, saveVoicePref, voicePref } from "./Bubble";
 import { Certificate } from "./Certificate";
 import { CrewRoom } from "./CrewRoom";
 import { ART, KIDS, LANDER, SHIPS, SUITS, homeFlag, kidFace, kidImg, shipImg, suitImg, type Crew } from "./data";
@@ -20,13 +20,21 @@ function preload() {
 
 /** Mission Moonlight: build a crew, launch, fly to the Moon, land, plant a flag, take home a certificate. */
 export function Adventure() {
-  const { t } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const [act, setAct] = useState<Act>("crew");
   const [crew, setCrew] = useState<Crew>({ name: "", kid: "kid-1", suit: "white", ship: "rocket", flag: "un" });
   const [landing, setLanding] = useState<Landing | null>(null);
   const [voice, setVoice] = useState(false);
   const [sound, setSnd] = useState(true);
   const [run, setRun] = useState(0);
+  const [mute, setMute] = useState(false);
+
+  // Tell the child when their language can't be read aloud on this device, rather than reading it in another one.
+  useEffect(() => {
+    let live = true;
+    void canSpeak(lang).then((ok) => { if (live) setMute(!ok); });
+    return () => { live = false; };
+  }, [lang]);
 
   useEffect(() => {
     preload();
@@ -45,11 +53,17 @@ export function Adventure() {
       <div className="mm-tools">
         <Link href="/" className="mm-icon" aria-label="✕" title={t("nav.home")}>✕</Link>
         <span className="mm-brand">{t("brand")} <small>{t("tagline")}</small></span>
+        <div className="mm-lang" role="group" aria-label={t("adv.lang")}>
+          <button type="button" aria-pressed={lang === "en"} onClick={() => setLang("en")} lang="en">EN</button>
+          <button type="button" aria-pressed={lang === "bn"} onClick={() => setLang("bn")} lang="bn">বাংলা</button>
+          <button type="button" aria-pressed={lang === "es"} onClick={() => setLang("es")} lang="es">ES</button>
+        </div>
         <button type="button" className="mm-icon" aria-pressed={sound} title={t("adv.sound")} aria-label={t("adv.sound")}
           onClick={() => { setSound(!sound); setSnd(!sound); }}>{sound ? "🔊" : "🔇"}</button>
         <button type="button" className="mm-icon" aria-pressed={voice} title={t("adv.voice")} aria-label={t("adv.voice")}
           onClick={() => { saveVoicePref(!voice); setVoice(!voice); }}>{voice ? "🗣️" : "🤫"}</button>
       </div>
+      {voice && mute && <p className="mm-novoice" role="status">🔈 {t("adv.noVoice")}</p>}
 
       {act === "crew" && <CrewRoom crew={crew} setCrew={setCrew} voice={voice} onLaunch={() => setAct("launch")} />}
       {act === "launch" && <Launch key={`l${run}`} crew={crew} voice={voice} onDone={() => setAct("flight")} />}

@@ -3,17 +3,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { setRoar, sfx } from "@/lib/sound";
 import { Bubble, HoldButton, TapButton } from "./Bubble";
-import { ART, LANDER, flagImg, flagList, homeFlag, kidFace, shipImg, suitImg, type Crew } from "./data";
+import { ART, LANDER, flagImg, flagList, homeFlag, kidFace, shipImg, suitFace, type Crew } from "./data";
+import { useSuitFace } from "./useSuitFace";
+import { Porthole } from "./Porthole";
 import { Mission, type SkyDirs, type Telemetry, type View } from "./mission3d";
 
-type Step = "load" | "orbit" | "tli" | "wave" | "waved" | "water" | "waterDone" | "rocks" | "rocksDone" | "approach" | "brake"
+type Step = "load" | "orbit" | "tli" | "wave" | "waved" | "water" | "waterDone" | "rocks" | "rocksDone" | "gaze" | "galaxy" | "approach" | "brake"
   | "earthrise" | "photo" | "lander" | "descent" | "touch" | "pole" | "live" | "walk" | "jumped" | "flag" | "plant" | "noWind" | "peace" | "done";
 
 const VIEW: Partial<Record<Step, View>> = {
-  orbit: "orbit", tli: "orbit", wave: "lookBack", waved: "lookBack", water: "cockpit", waterDone: "cockpit", rocks: "cockpit", rocksDone: "cockpit",
+  orbit: "orbit", tli: "orbit", wave: "lookBack", waved: "lookBack", water: "cockpit", waterDone: "cockpit", rocks: "cockpit", rocksDone: "cockpit", gaze: "galaxy", galaxy: "galaxy",
   approach: "approach", brake: "approach", earthrise: "earthrise", photo: "earthrise", lander: "earthrise",
 };
-const CAP: Partial<Record<Step, number>> = { wave: 0.1, water: 0.4, rocks: 0.72, approach: 1 };
+const CAP: Partial<Record<Step, number>> = { wave: 0.1, water: 0.4, rocks: 0.72, gaze: 0.85, approach: 1 };
 const DROPS = 5, ROCKS = 5;
 
 export interface Landing { site: string; photo: string; final: string }
@@ -62,6 +64,7 @@ function FlagPicker({ value, onPick }: { value: string; onPick: (code: string) =
 
 export function Flight({ crew, setCrew, voice, onDone }: { crew: Crew; setCrew: (c: Crew) => void; voice: boolean; onDone: (l: Landing) => void }) {
   const { t } = useI18n();
+  const suited = useSuitFace(crew.suit, crew.kid);
   const canvas = useRef<HTMLCanvasElement>(null);
   const m = useRef<Mission | null>(null);
   const tel = useRef<Telemetry>({ u: 0, alt: 0, vy: 0 });
@@ -87,10 +90,10 @@ export function Flight({ crew, setCrew, voice, onDone }: { crew: Crew; setCrew: 
   useEffect(() => {
     let dead = false;
     void landingSky().then((s) => { site.current = s; if (!dead) { setSiteName(s.name); setSiteLive(s.live); } });
-    Mission.create(canvas.current!, {
-      ship: shipImg(crew.ship), lander: LANDER, suit: suitImg(crew.suit), salute: suitImg(crew.suit, "salute"),
+    void Promise.all([suitFace(crew.suit, crew.kid), suitFace(crew.suit, crew.kid, "salute")]).then(([suit, salute]) => Mission.create(canvas.current!, {
+      ship: shipImg(crew.ship), lander: LANDER, suit, salute,
       earth: `${ART}/earth.jpg`, moon: `${ART}/moon.jpg`,
-    }).then((mission) => {
+    })).then((mission) => {
       if (dead) { mission.dispose(); return; }
       m.current = mission;
       if (location.search.includes("debug")) (window as unknown as { __mm: Mission }).__mm = mission;
@@ -177,13 +180,15 @@ export function Flight({ crew, setCrew, voice, onDone }: { crew: Crew; setCrew: 
   const lines: Partial<Record<Step, string>> = {
     orbit: t("adv.b.orbit"), tli: t("adv.b.tli"), wave: `${t("adv.b.lookBack")} ${t("adv.b.wave")}`, waved: t("adv.b.waved"),
     water: t("adv.b.water"), waterDone: t("adv.b.waterDone"), rocks: t("adv.b.rocks"), rocksDone: t("adv.b.rocksDone", { name }),
+    gaze: t("adv.b.gaze", { name }), galaxy: t("adv.b.galaxy"),
     brake: t("adv.b.brake"), earthrise: t("adv.b.earthrise"), photo: t("adv.b.photo"), lander: t("adv.b.lander"),
     descent: tooFast ? t("adv.b.tooFast") : t("adv.b.landHow"), touch: touch < 3 ? t("adv.b.touchdown") : t("adv.b.bumpy"),
     pole: t("adv.b.pole", { site: siteName }), live: t("adv.b.live"), walk: t("adv.b.walk"), jumped: t("adv.b.jumped"),
     flag: t("adv.b.flag"), plant: t("adv.b.plantHow"), noWind: t("adv.b.noWind"), peace: t("adv.b.peace"), done: t("adv.b.done", { name }),
   };
   const ok: Partial<Record<Step, () => void>> = {
-    orbit: () => next("tli"), waved: () => next("water"), waterDone: () => next("rocks"), rocksDone: () => next("approach"),
+    orbit: () => next("tli"), waved: () => next("water"), waterDone: () => next("rocks"), rocksDone: () => next("gaze"),
+    gaze: () => { sfx("whoosh"); setStep("galaxy"); }, galaxy: () => next("approach"),
     photo: () => next("lander"), lander: toLander, touch: () => next("pole"), pole: () => next(siteLive ? "live" : "walk"),
     live: () => next("walk"), jumped: () => next("flag"), noWind: () => next("peace"), peace: finish, done: end,
   };
@@ -193,6 +198,8 @@ export function Flight({ crew, setCrew, voice, onDone }: { crew: Crew; setCrew: 
     <div className={`mm-flight ${VIEW[step] === "cockpit" ? "cockpit" : ""}`}>
       <canvas ref={canvas} className="mm-canvas" />
       <div className="mm-window" aria-hidden="true" />
+      {step === "gaze" && <Porthole suited={suited} side="outside" />}
+      {step === "galaxy" && <Porthole suited={suited} side="inside" />}
       {flash > 0 && <div className="mm-photo-flash" key={flash} />}
       <div className={`mm-fade ${fade || step === "load" ? "on" : ""}`} />
       {step === "load" && !no3d && <div className="mm-loading"><span className="mm-spinner" /></div>}

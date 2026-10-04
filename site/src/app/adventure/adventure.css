@@ -34,6 +34,13 @@ html.mm-open .luna-dock { display: none; }
 .mm-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--mm-line); background: var(--mm-glass);
   backdrop-filter: blur(10px); color: var(--mm-ink); text-decoration: none; font-size: 18px; cursor: pointer; transition: transform 0.15s; }
 .mm-icon:hover { transform: scale(1.08); }
+.mm-lang { display: flex; padding: 3px; border-radius: 999px; border: 1px solid var(--mm-line); background: var(--mm-glass); backdrop-filter: blur(10px); }
+.mm-lang button { min-width: 40px; height: 34px; padding: 0 10px; border: 0; border-radius: 999px; background: none; color: var(--mm-dim); font: 700 0.85rem var(--display); cursor: pointer; }
+.mm-lang button[aria-pressed="true"] { background: linear-gradient(135deg, var(--mm-gold), var(--mm-orange)); color: #1a1205; }
+.mm-novoice { position: absolute; z-index: 29; top: 62px; right: 16px; max-width: min(360px, calc(100% - 32px)); margin: 0; padding: 8px 14px; border-radius: 12px;
+  background: var(--mm-glass); border: 1px solid var(--mm-line); backdrop-filter: blur(8px); font-size: 0.82rem; color: var(--mm-dim); pointer-events: none; animation: mm-novoice 9s ease both; }
+@keyframes mm-novoice { 0% { opacity: 0; } 5%, 85% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+@media (max-width: 560px) { .mm-brand small { display: none; } .mm-lang button { min-width: 34px; padding: 0 7px; } }
 
 /* ---------- buttons ---------- */
 .mm-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 10px 20px; border-radius: 999px;
@@ -289,3 +296,44 @@ html.mm-open .luna-dock { display: none; }
   .mm-ready { height: 40vh; }
   .mm-btn.big { min-height: 50px; padding: 10px 20px; font-size: 1.05rem; }
 }
+
+/* ---------- the ship's window: watching the galaxy ---------- */
+.mm-port { position: absolute; inset: 0; z-index: 15; pointer-events: none; --r: min(19vmin, 190px); --cx: 58%; --cy: 50%; animation: mm-portin 1.4s ease both; }
+@keyframes mm-portin { from { opacity: 0; transform: scale(1.12); } }
+.mm-port-hole { position: absolute; left: var(--cx); top: var(--cy); width: calc(var(--r) * 2); height: calc(var(--r) * 2); transform: translate(-50%, -50%); border-radius: 50%; }
+.mm-port-ring { position: absolute; inset: calc(var(--r) * -0.16); border-radius: 50%; z-index: 3;
+  background: radial-gradient(circle closest-side, transparent 84.5%, #0a0e18 85.5%, #39445e 87.5%, #8a96b2 91%, #4c5874 95%, #20283c 98%, #0b0f1a 99.4%, transparent 100%);
+  filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 0.7)); }
+.mm-port-ring i { position: absolute; left: 50%; top: 50%; width: calc(var(--r) * 0.07); height: calc(var(--r) * 0.07); margin: calc(var(--r) * -0.035); border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #e8eefc, #6d7896 55%, #252c40);
+  transform: rotate(var(--a)) translateY(calc(var(--r) * -1.06)); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+
+/* Outside: the hull curves across the screen; the galaxy shows above it and in the glass. */
+.mm-hull { position: absolute; inset: 0;
+  --shape: radial-gradient(ellipse 140% 120% at 70% 118%, #000 79.6%, transparent 80%);
+  -webkit-mask-image: var(--shape); mask-image: var(--shape);
+  background:
+    radial-gradient(ellipse 140% 120% at 70% 118%, transparent 77.5%, rgba(170, 195, 255, 0.55) 79.5%, transparent 80%),
+    radial-gradient(ellipse 60% 50% at 40% 40%, rgba(120, 140, 190, 0.28), transparent 70%),
+    repeating-linear-gradient(90deg, transparent 0 calc(25% - 2px), rgba(0, 0, 0, 0.45) calc(25% - 2px) 25%),
+    repeating-linear-gradient(0deg, transparent 0 calc(18% - 2px), rgba(0, 0, 0, 0.35) calc(18% - 2px) 18%),
+    linear-gradient(160deg, #3a4560 0%, #1d2436 45%, #0b0f1a 100%); }
+.mm-port-glass { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; }
+.mm-port-cabin { position: absolute; inset: 0; background: radial-gradient(circle at 50% 30%, #ffe2b0 0%, #c98a52 35%, #4a2d2a 75%, #1a1218 100%); }
+.mm-port-kid { position: absolute; left: 41.5%; top: 14%; height: 205%; transform: translateX(-50%); animation: mm-peer 5s ease-in-out infinite;
+  filter: drop-shadow(0 0 calc(var(--r) * 0.08) rgba(255, 200, 140, 0.5)); }
+.out .mm-port-glass::after { content: ""; position: absolute; inset: 0; border-radius: 50%; z-index: 1; box-shadow: inset 0 0 calc(var(--r) * 0.35) rgba(0, 0, 0, 0.8); }
+@keyframes mm-peer { 50% { transform: translateX(-50%) translateY(-3%) rotate(-2deg); } }
+.mm-port-reflect { position: absolute; inset: 0; z-index: 2;
+  background:
+    linear-gradient(125deg, transparent 30%, rgba(255, 255, 255, 0.22) 38%, transparent 44%, transparent 56%, rgba(255, 255, 255, 0.1) 60%, transparent 64%),
+    radial-gradient(ellipse 120% 22% at 50% 50%, rgba(190, 170, 255, 0.35), transparent 70%);
+  background-size: 100% 100%, 220% 100%; mix-blend-mode: screen; animation: mm-reflect 9s linear infinite; }
+@keyframes mm-reflect { from { background-position: 0 0, 0% 0; } to { background-position: 0 0, 100% 0; } }
+
+/* Inside: the cabin picture, its window cut out so the live galaxy shows through, and the child floating by it. */
+.mm-cabin { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% 45%; }
+.mm-cabin-kid { position: absolute; left: max(2vw, 8px); bottom: 16vh; height: min(66vh, 600px); max-width: 44vw; object-fit: contain; object-position: bottom left;
+  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 30px rgba(255, 196, 120, 0.25)); animation: mm-zerog 6s ease-in-out infinite; }
+@keyframes mm-zerog { 50% { transform: translateY(-14px) rotate(-2.5deg); } }
+@media (max-aspect-ratio: 1/1) { .mm-cabin-kid { bottom: 22vh; height: 40vh; max-width: 48vw; } }

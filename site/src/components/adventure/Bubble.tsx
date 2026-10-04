@@ -13,17 +13,42 @@ export function saveVoicePref(on: boolean) {
   if (!on) try { speechSynthesis.cancel(); } catch {}
 }
 
+/** The browser's voices, which some browsers only list a moment after the page loads. */
+function voices(): Promise<SpeechSynthesisVoice[]> {
+  return new Promise((ok) => {
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth) return ok([]);
+      const now = synth.getVoices();
+      if (now.length) return ok(now);
+      const done = () => { synth.removeEventListener("voiceschanged", done); ok(synth.getVoices()); };
+      synth.addEventListener("voiceschanged", done);
+      setTimeout(done, 1500);
+    } catch { ok([]); }
+  });
+}
+
+/** The best voice for a language: natural/online voices first, then the main regional variant (Bangladesh for Bengali). */
+async function pickVoice(lang: string) {
+  const want = VOICE_LANG[lang] ?? "en";
+  const all = (await voices()).filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith(want));
+  const score = (v: SpeechSynthesisVoice) => (/natural|online|neural|google/i.test(v.name) ? 2 : 0) + (/^(bn-bd|en-us|es-es)/i.test(v.lang) ? 1 : 0);
+  return all.sort((a, b) => score(b) - score(a))[0] ?? null;
+}
+
+/** Whether this device can read the given language aloud. */
+export async function canSpeak(lang: string) { return !!(await pickVoice(lang)); }
+
 /** Read a line aloud, but only with a voice that really speaks the language (no English voice reading Bengali). */
-function speak(text: string, lang: string) {
+async function speak(text: string, lang: string) {
   try {
     const synth = window.speechSynthesis;
     if (!synth) return;
     synth.cancel();
-    const want = VOICE_LANG[lang] ?? "en";
-    const voice = synth.getVoices().find((v) => v.lang.toLowerCase().startsWith(want));
+    const voice = await pickVoice(lang);
     if (!voice) return;
     const u = new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g, ""));
-    u.voice = voice; u.lang = voice.lang; u.rate = 1.02; u.pitch = 1.1;
+    u.voice = voice; u.lang = voice.lang; u.rate = lang === "bn" ? 0.95 : 1.02; u.pitch = 1.1;
     synth.speak(u);
   } catch {}
 }
@@ -46,7 +71,7 @@ export function Bubble({ text, onOk, okLabel, voice, children }: { text: string;
       return n + 1;
     });
     timer.current = window.setTimeout(step, 260);
-    if (voice) speak(text, lang);
+    if (voice) void speak(text, lang);
     return () => clearTimeout(timer.current);
   }, [text, voice, lang]);
 

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { sfx } from "@/lib/sound";
 import { Bubble } from "./Bubble";
+import { useSuitFace } from "./useSuitFace";
 import { KIDS, SHIPS, SUITS, kidFace, kidImg, shipImg, suitImg, type Crew, type Kid, type Ship, type Suit } from "./data";
 
 /** A card that leans toward the pointer, like picking up a trading card. */
@@ -29,6 +30,7 @@ const STEPS = ["name", "kid", "suit", "ship", "ready"] as const;
 
 export function CrewRoom({ crew, setCrew, voice, onLaunch }: { crew: Crew; setCrew: (c: Crew) => void; voice: boolean; onLaunch: () => void }) {
   const { t } = useI18n();
+  const suited = useSuitFace(crew.suit, crew.kid);
   const [step, setStep] = useState(0);
   const [suiting, setSuiting] = useState(false);
   const at = STEPS[step];
@@ -80,7 +82,7 @@ export function CrewRoom({ crew, setCrew, voice, onLaunch }: { crew: Crew; setCr
         {at === "suit" && (
           <div className="mm-suit">
             <div className={`mm-suit-hero ${suiting ? "suiting" : ""}`}>
-              <img src={suitImg(crew.suit)} alt="" className="mm-suit-big" draggable={false} key={crew.suit} />
+              <img src={suited} alt="" className="mm-suit-big" draggable={false} key={crew.suit} />
               <img src={kidImg(crew.kid)} alt="" className="mm-suit-kid" draggable={false} />
               <span className="mm-sparkles" aria-hidden="true">{Array.from({ length: 10 }, (_, i) => <i key={i} style={{ "--i": i } as React.CSSProperties} />)}</span>
               <span className="mm-badge"><img src={kidFace(crew.kid)} alt="" />{t("adv.you", { name })}</span>
@@ -110,7 +112,7 @@ export function CrewRoom({ crew, setCrew, voice, onLaunch }: { crew: Crew; setCr
         {at === "ready" && (
           <div className="mm-ready">
             <img src={shipImg(crew.ship)} alt="" className="mm-ready-ship" draggable={false} />
-            <img src={suitImg(crew.suit)} alt="" className="mm-ready-astro" draggable={false} />
+            <img src={suited} alt="" className="mm-ready-astro" draggable={false} />
             <span className="mm-badge big"><img src={kidFace(crew.kid)} alt="" />{t("adv.you", { name })}</span>
           </div>
         )}

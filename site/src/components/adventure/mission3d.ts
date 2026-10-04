@@ -7,7 +7,7 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
-export type View = "orbit" | "cockpit" | "lookBack" | "approach" | "earthrise" | "surface";
+export type View = "orbit" | "cockpit" | "lookBack" | "galaxy" | "approach" | "earthrise" | "surface";
 /** Where the Sun and Earth stand in the landing site's sky, in degrees (azimuth clockwise from north). */
 export interface SkyDirs { sunAz: number; sunEl: number; earthAz: number; earthEl: number }
 export interface Art { ship: string; lander: string; suit: string; salute: string; earth: string; moon: string }
@@ -20,6 +20,9 @@ const G_MOON = 1.62;
 /** The astronaut is drawn a little larger than life so children can see themselves beside the 6 m lander. */
 const ASTRO_H = 2.6;
 const D2R = Math.PI / 180;
+/** Toward the bright core of the Milky Way: behind the ship on the way out, so Earth hangs small in front of it. */
+const GAL_DIR = new THREE.Vector3(0.62, 0.42, 0.66).normalize();
+const GAL_TILT = 0.45;
 
 /* ---------- small helpers ---------- */
 
@@ -212,10 +215,67 @@ export class Mission {
     return big;
   }
 
+  /** The Milky Way: a glowing band of light with dark dust lanes and a bright core, plus the dense stars along it. */
+  private milkyWay() {
+    const g = new THREE.Group();
+    const W = 1024, H = 512;
+    const tex = canvasTex(W, H, (c) => {
+      const img = c.createImageData(W, H), d = img.data;
+      for (let y = 0; y < H; y++) {
+        const lat = (y / H - 0.5) * Math.PI;
+        for (let x = 0; x < W; x++) {
+          const lon = Math.abs(x / W - 0.5) * Math.PI * 2;
+          const core = Math.exp(-((lon / 0.55) ** 2));
+          const width = 0.09 + 0.14 * core;
+          const band = Math.exp(-((lat / width) ** 2));
+          const i = (y * W + x) * 4;
+          d[i + 3] = 255;
+          if (band < 0.004) continue;
+          const n = fbm(x / W * 30, y / H * 14, 4);
+          const laneLat = lat - 0.012 * Math.sin(x / W * 40) - 0.01;
+          const lane = Math.exp(-((laneLat / (0.018 + 0.03 * core)) ** 2)) * clamp(fbm(x / W * 60 + 7, y / H * 30, 3) * 1.6 - 0.25, 0, 1);
+          const b = band * (0.15 + 1.1 * n * n * n) * (0.35 + 1.2 * core) * (1 - 0.9 * lane);
+          const neb = clamp(fbm(x / W * 18 + 31, y / H * 9, 3) * 2.2 - 1.15, 0, 1) * band;
+          const warm = core * 0.8;
+          d[i] = clamp((0.62 + 0.38 * warm) * b * 255 + neb * 120, 0, 255);
+          d[i + 1] = clamp((0.68 + 0.17 * warm) * b * 255 + neb * 30, 0, 255);
+          d[i + 2] = clamp((1.0 - 0.35 * warm) * b * 255 + neb * 80, 0, 255);
+        }
+      }
+      c.putImageData(img, 0, 0);
+    });
+    const band = new THREE.Mesh(new THREE.SphereGeometry(2800, 64, 32),
+      new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.9 }));
+    band.renderOrder = -1;
+    g.add(band);
+
+    // Thousands of faint stars crowded along the band, thickest toward the core.
+    const n = 9000, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), c = new THREE.Color();
+    const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;
+    for (let i = 0; i < n; i++) {
+      const lon = gauss() * Math.PI * (Math.random() < 0.5 ? 0.35 : 1);
+      const lat = gauss() * (0.1 + 0.12 * Math.exp(-((lon / 0.55) ** 2)));
+      pos.set([Math.cos(lat) * Math.cos(lon) * 2700, Math.sin(lat) * 2700, Math.cos(lat) * Math.sin(lon) * 2700], i * 3);
+      c.setHSL(Math.random() < 0.6 ? 0.6 : 0.1, 0.4, 0.55 + Math.random() * 0.4);
+      col.set([c.r, c.g, c.b], i * 3);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 1.1, sizeAttenuation: false, vertexColors: true, depthWrite: false, transparent: true, opacity: 0.85 }));
+    pts.frustumCulled = false;
+    g.add(pts);
+
+    g.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), GAL_DIR);
+    g.rotateOnWorldAxis(GAL_DIR, GAL_TILT);
+    return g;
+  }
+
   private buildSpace() {
     const s = this.space;
     s.background = new THREE.Color(0x010204);
     s.add(this.stars(3000, 5000));
+    s.add(this.milkyWay());
     const sunDir = new THREE.Vector3(0.23, 0.27, -0.89).normalize(); // to the side of the Earth-Moon line: Earth from the Moon is a bright gibbous
     const sun = new THREE.DirectionalLight(0xffffff, 3.2);
     sun.position.copy(sunDir);
@@ -656,6 +716,14 @@ export class Mission {
     } else if (this.view === "lookBack") {
       want.copy(this.shipPos).addScaledVector(f, 7 * this.narrow).addScaledVector(side, 2.5).addScaledVector(UP, 1.4);
       look.copy(this.shipPos).lerp(new THREE.Vector3(), 0.02);
+    } else if (this.view === "galaxy") {
+      // Inside the cabin, looking out of the window at the Milky Way; it drifts slowly as the ship turns. Drag to look around.
+      want.copy(this.shipPos);
+      const t2 = this.clock.getElapsed() * 0.05;
+      const dir = GAL_DIR.clone().applyAxisAngle(UP, Math.sin(t2) * 0.12 + this.yaw * 0.6);
+      dir.applyAxisAngle(new THREE.Vector3().crossVectors(dir, UP).normalize(), -this.pitch * 0.5 + 0.05);
+      look.copy(want).addScaledVector(dir, 100);
+      fov = 62;
     } else if (this.view === "approach") {
       want.copy(this.shipPos).addScaledVector(f, -7 * this.narrow).addScaledVector(side, 3).addScaledVector(UP, 1.6);
       look.copy(this.shipPos).addScaledVector(f, 6);
@@ -688,7 +756,7 @@ export class Mission {
     if (Math.abs(this.cam.fov - fov) > 0.05) { this.cam.fov += (fov - this.cam.fov) * ease(dt, 3); this.cam.updateProjectionMatrix(); }
 
     // Ship billboard: face the camera, nose along the direction of travel as it appears on screen.
-    const hide = this.view === "cockpit" || this.view === "earthrise";
+    const hide = this.view === "cockpit" || this.view === "earthrise" || this.view === "galaxy";
     this.ship.visible = !hide;
     this.ship.position.copy(this.shipPos);
     this.ship.quaternion.copy(this.cam.quaternion);
